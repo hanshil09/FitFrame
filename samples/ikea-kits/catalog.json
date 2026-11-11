@@ -1,0 +1,62 @@
+[
+  {
+    "article_number": "30178884",
+    "name": "BEKVÄM",
+    "manual_id": "AA-444158-9",
+    "model": "30178884/model.glb",
+    "manual": "30178884/manual.pdf",
+    "mesh_nodes": 21,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "40463852",
+    "name": "BEKVÄM",
+    "manual_id": "AA-323406-7",
+    "model": "40463852/model.glb",
+    "manual": "40463852/manual.pdf",
+    "mesh_nodes": 21,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "60155602",
+    "name": "DALFRED",
+    "manual_id": "AA-399492-11",
+    "model": "60155602/model.glb",
+    "manual": "60155602/manual.pdf",
+    "mesh_nodes": 33,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "00333947",
+    "name": "EKET two-drawer",
+    "manual_id": "AA-1914748-7",
+    "model": "00333947/model.glb",
+    "manual": "00333947/manual.pdf",
+    "mesh_nodes": 105,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "70332124",
+    "name": "EKET open cabinet",
+    "manual_id": "AA-1914763-5",
+    "model": "70332124/model.glb",
+    "manual": "70332124/manual.pdf",
+    "mesh_nodes": 21,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "30449908",
+    "name": "LACK side table",
+    "manual_id": "AA-207276-4",
+    "model": "30449908/model.glb",
+    "manual": "30449908/manual.pdf",
+    "mesh_nodes": 9,
+    "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
+    "model_license": "CC BY-NC-SA 4.0"
+  }
+]

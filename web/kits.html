@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IKEA assembly kits</title>
+<style>
+body{font:16px system-ui;background:#edf2ed;color:#17352b;margin:24px auto;padding:0 18px;max-width:1200px}section{background:white;padding:15px;margin:12px 0;border-radius:12px}button,input,select{font:inherit;margin:5px}button{padding:7px 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.view{height:345px;background:#e2eae4}canvas{display:block;width:100%;height:100%;touch-action:none}iframe{width:100%;height:420px}pre{white-space:pre-wrap}#issues{color:#823e12;white-space:pre-line}@media(max-width:720px){.grid{grid-template-columns:1fr}}
+</style><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<a href="/">Assembly scanner</a><h1>IKEA assembly kits</h1>
+<section><label>Kit <select id="kit"></select></label> <a id="manual" target="_blank" rel="noopener">Matching PDF</a>
+<form id="scan"><label>Assembly PDF <input id="pdf" type="file" accept="application/pdf" required></label><button>Read with Gemini</button></form>
+<p id="status" role="status">Loading kits…</p><p id="issues" hidden></p></section>
+<div class="grid">
+<section><h2>FitFrame</h2><div id="left" class="view"></div><p id="step">Finished model</p></section>
+<section><h2>Manual-PA comparison</h2><div id="right" class="view" hidden></div><p id="comparison">No Manual-PA run available.</p>
+<p><label><input id="use-pa" type="checkbox" disabled> Use imported poses in playback and export</label></p>
+<label>Import prediction <input id="prediction" type="file" accept=".json"></label>
+<details><summary>Prediction format</summary><p>Export GLB node indices and predicted world poses in meters, using the IKEA kit coordinate frame. Use one entry per printed step and list the parts newly placed in that step.</p>
+<pre>{"article_number":"30178884","steps":[{"step":"1","poses":[{"node":1,"position":[0,0,0],"quaternion":[0,0,0,1]}]}]}</pre></details></section>
+</div>
+<section><button id="prev" disabled>Previous</button><button id="play" disabled>Play all</button><button id="next" disabled>Next</button>
+<label><input id="review" type="checkbox" disabled> I checked the steps against the manual</label><button id="export" disabled>Export video</button></section>
+<section id="source" hidden><h2>Source manual</h2><iframe id="page" title="Source assembly manual"></iframe></section>
+<script type="module" src="./kits.js"></script></html>

@@ -45,3 +45,22 @@ Command-line extraction: `.venv/bin/python server/extract_cli.py samples/rta-009
 5. On the phone: allow Local Network access. First run with a free Apple ID: Settings → General →
    VPN & Device Management → trust your developer certificate.
 6. If the Mac's IP changes, long-press anywhere in the app to change the server address.
+
+## IKEA kit player
+
+Open `/kits.html` on the running server. The six research kits are read from
+`samples/ikea-kits/catalog.json`. Select a kit to inspect its finished GLB, then
+upload its manual to generate the timeline. New scans need the Gemini SDK,
+pypdfium2, and a configured Gemini key. Exact PDF copies are matched by hash.
+
+Gemini proposes the step-to-node mapping. Compare it with the displayed manual
+and review any unresolved items before recording. Movement uses illustrative
+approach paths and the browser exports MP4 when available or WebM otherwise.
+
+The comparison panel imports a Manual-PA prediction export aligned to the GLB
+coordinate frame. It does not run Manual-PA. Its input format is shown in the
+panel. For a genuine run, use compatible checkpoints and an exporter that maps
+predictions to the GLB node indices.
+
+`supabase/ikea-kits.sql` prepares private cloud storage and metadata for the
+research kits. The player currently serves the local copies.

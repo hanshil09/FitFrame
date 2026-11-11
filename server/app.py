@@ -9,6 +9,8 @@ import time
 import traceback
 import uuid
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -22,6 +24,7 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 import pipeline  # noqa: E402
 from providers import make_provider  # noqa: E402
+from kits import router as kits_router  # noqa: E402
 
 JOBS_DIR = ROOT / "server" / "jobs"
 CACHE_DIR = JOBS_DIR / "cache"
@@ -126,6 +129,28 @@ def health():
     return {"ok": True, "provider": os.environ.get("MODEL_PROVIDER", "gemini"), "model": os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")}
 
 
+@app.get("/api/assets")
+def list_assets():
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+    if not url or not key:
+        raise HTTPException(503, "Supabase catalog is not configured.")
+    request = Request(
+        f"{url}/rest/v1/furniture_assets?select=*&order=name,id&limit=100",
+        headers={"apikey": key, "Accept": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            return json.load(response)
+    except HTTPError as error:
+        if error.code == 404:
+            raise HTTPException(503, "Run supabase/catalog.sql to create the furniture asset catalog.") from error
+        raise HTTPException(502, "Supabase could not read the furniture asset catalog.") from error
+    except (URLError, TimeoutError, ValueError) as error:
+        raise HTTPException(502, "Supabase could not read the furniture asset catalog.") from error
+
+
+app.include_router(kits_router)
 app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")
 
 if __name__ == "__main__":

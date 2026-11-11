@@ -21,10 +21,12 @@ class Provider:
 class GeminiProvider(Provider):
     name = "gemini"
 
-    def __init__(self):
+    def __init__(self, fail_fast=False):
         from google import genai
-        self._genai = genai
-        self.client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        from google.genai import types
+        self.fail_fast = fail_fast
+        http_options = types.HttpOptions(timeout=20000) if fail_fast else None
+        self.client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=http_options)
         # Free-tier quotas are per model per day, so when one runs out we move to the next
         first = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
         extra = os.environ.get("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite")
@@ -39,7 +41,8 @@ class GeminiProvider(Provider):
         parts = [types.Part.from_bytes(data=img, mime_type="image/png") for img in images] + [prompt]
         cfg = types.GenerateContentConfig(temperature=temperature, response_mime_type="application/json", response_schema=schema)
         delay = 4.0
-        for attempt in range(8):
+        attempts = min(len(self.models), 3) if self.fail_fast else 8
+        for attempt in range(attempts):
             try:
                 r = self.client.models.generate_content(model=self.model, contents=parts, config=cfg)
                 self.calls += 1
@@ -53,6 +56,11 @@ class GeminiProvider(Provider):
                 code, msg = getattr(e, "code", None), str(e)
                 daily = code == 429 and "PerDay" in msg
                 gone = code == 404
+                if self.fail_fast:
+                    if code in (404, 429, 500, 502, 503, 504) and attempt + 1 < attempts:
+                        self.model = self.models[attempt + 1]
+                        continue
+                    raise
                 if daily or gone:
                     i = self.models.index(self.model)
                     if i + 1 < len(self.models):
@@ -69,8 +77,8 @@ class GeminiProvider(Provider):
         raise RuntimeError("model call failed after retries")
 
 
-def make_provider() -> Provider:
+def make_provider(*, fail_fast=False) -> Provider:
     name = os.environ.get("MODEL_PROVIDER", "gemini")
     if name == "gemini":
-        return GeminiProvider()
+        return GeminiProvider(fail_fast=fail_fast)
     raise ValueError(f"Unknown MODEL_PROVIDER {name!r} (supported: gemini)")
