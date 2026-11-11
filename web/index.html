@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Assembly scanner</title>
+<style>
+:root{--bg:#f4f1ec;--panel:#fff;--text:#22201c;--muted:#6b675f;--accent:#d9822b;--border:#ddd8cf}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,system-ui,sans-serif;overflow:hidden}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.center{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 32px) 16px 32px;height:100%;overflow:auto}
+h1{font-size:22px;font-weight:600;margin:0 0 6px}
+h2{font-size:16px;font-weight:600;margin:4px 0 6px}
+p{margin:0 0 14px;color:var(--muted)}
+.box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.btn{display:block;width:100%;font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px;margin-top:10px;cursor:pointer;background:var(--accent);color:#fff}
+.btn.secondary{background:#efebe4;color:var(--text)}
+.btn:disabled{opacity:.5}
+.file{display:block;border:2px dashed var(--border);border-radius:12px;padding:22px;text-align:center;color:var(--muted);cursor:pointer}
+.file input{display:none}
+.row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px;margin-top:10px}
+.log{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--muted)}
+.log div{padding:2px 0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:s 0.8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+.err{color:#a32d2d;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+
+#c{display:block;width:100vw;height:100vh;touch-action:none}
+.card{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;width:min(400px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;max-height:calc(100vh - 150px);overflow:auto}
+.k{font-size:12px;color:var(--muted)}
+.title{font-size:16px;font-weight:600;margin:3px 0 4px}
+.mate{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);word-break:break-word}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap}
+.stated{background:#eef3e6;color:#3b6d11}.derived{background:#e6f1fb;color:#0c447c}.estimated{background:#faeeda;color:#854f0b}.user{background:#eeedfe;color:#3c3489}.warn{background:#fcebeb;color:#a32d2d}
+details{margin-top:8px;border-top:1px solid var(--border);padding-top:6px}
+summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.part{margin:6px 0;font-size:13px}
+.part b{font-weight:600}
+.dims{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.issue{font-size:12px;color:#a32d2d;margin:3px 0}
+.src{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:12px;width:min(260px,36vw);background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px}
+.src canvas{width:100%;display:block;border-radius:6px}
+.bar{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;flex-wrap:wrap}
+.bar button{font:inherit;font-size:14px;border:1px solid var(--border);background:#faf8f5;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--text)}
+.bar input[type=range]{flex:1;min-width:120px}
+.bar label{display:flex;gap:5px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
+.dots{display:flex;gap:3px;flex-wrap:wrap;max-width:140px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border)}
+.dot.on{background:var(--accent)}
+@media (max-width:640px){.src{top:auto;bottom:calc(env(safe-area-inset-bottom) + 120px);width:40vw}.card{max-height:42vh}}
+</style>
+</head>
+<body>
+
+<section class="screen on" id="scan">
+  <div class="center">
+    <h1>Scan an assembly manual</h1>
+    <p>Add the manual as a PDF or photos of its pages (parts list first, then the steps in order). The server reads the pages and builds a 3D walkthrough.</p>
+    <div class="box">
+      <label class="file" id="drop">
+        <input type="file" id="files" accept="application/pdf,image/*" multiple>
+        <span id="fileLabel">Tap to choose a PDF or take photos</span>
+      </label>
+      <button class="btn" id="go" disabled>Read manual</button>
+      <button class="btn secondary" id="sample">Try the sample chair manual</button>
+      <label class="row"><input type="checkbox" id="fresh"> Re-read with the model (ignore the saved result)</label>
+      <div class="err" id="scanErr"></div>
+    </div>
+    <p class="k" id="health"></p>
+  </div>
+</section>
+
+<section class="screen" id="progress">
+  <div class="center">
+    <h1><span class="spin" id="spin"></span><span id="progTitle">Reading the manual…</span></h1>
+    <p>Pages are classified, the parts list is read, then each step is read three times and the answers are voted on.</p>
+    <div class="box log" id="log"></div>
+    <div class="err" id="progErr"></div>
+    <button class="btn secondary" id="back1">Back</button>
+  </div>
+</section>
+
+<section class="screen" id="player">
+  <canvas id="c"></canvas>
+  <div class="card">
+    <div class="k" id="stepNo">Building geometry…</div>
+    <div class="title" id="title"></div>
+    <div class="mate" id="mate"></div>
+    <div class="badges" id="badges"></div>
+    <div id="stepIssues"></div>
+    <details id="partsBox"><summary id="partsSummary">Parts</summary><div id="parts"></div></details>
+    <details id="issuesBox"><summary id="issuesSummary">Checks</summary><div id="issues"></div></details>
+    <div class="k" id="status" style="margin-top:6px"></div>
+  </div>
+  <div class="src" id="src"><canvas id="srcCanvas"></canvas><div class="k" id="srcLabel" style="margin-top:3px"></div></div>
+  <div class="bar">
+    <button id="newScan">New</button>
+    <button id="prev">◀</button>
+    <button id="play">Pause</button>
+    <button id="next">▶</button>
+    <button id="replay">↺</button>
+    <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Scrub within step">
+    <div class="dots" id="dots"></div>
+    <label><input type="checkbox" id="all" checked>All</label>
+    <label><input type="checkbox" id="lineart">Line art</label>
+    <label><input type="checkbox" id="showsrc" checked>Page</label>
+  </div>
+</section>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

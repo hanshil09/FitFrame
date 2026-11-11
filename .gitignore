@@ -73,3 +73,21 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ---- Scan-to-3D app (server/, web/, ios/) ----
+# secrets
+.env
+.env.*
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# server runtime data (uploaded pages, job outputs, cached plans)
+server/jobs/
+
+# Xcode
+ios/**/xcuserdata/
+ios/**/DerivedData/
+.DS_Store

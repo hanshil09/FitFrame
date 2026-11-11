@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assembly player</title>
+<style>
+:root{--bg:#f4f1ec;--panel:#fff;--text:#22201c;--muted:#6b675f;--accent:#d9822b;--border:#ddd8cf}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,system-ui,sans-serif;overflow:hidden}
+#c{display:block;width:100vw;height:100vh;touch-action:none}
+.card{position:absolute;top:16px;left:16px;width:min(400px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;max-height:calc(100vh - 120px);overflow:auto}
+.k{font-size:12px;color:var(--muted)}
+h1{font-size:16px;font-weight:600;margin:4px 0 6px}
+.mate{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap}
+.stated{background:#eef3e6;color:#3b6d11}.derived{background:#e6f1fb;color:#0c447c}.estimated{background:#faeeda;color:#854f0b}.user{background:#eeedfe;color:#3c3489}
+details{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.part{margin:8px 0}
+.part b{font-weight:600}
+.dims{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.err{color:#a32d2d;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.src{position:absolute;top:16px;right:16px;width:min(260px,38vw);background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px}
+.src img{width:100%;display:block;border-radius:6px}
+.bar{position:absolute;left:16px;right:16px;bottom:16px;display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px 10px;flex-wrap:wrap}
+button{font:inherit;border:1px solid var(--border);background:#faf8f5;border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text)}
+button:hover{border-color:#bbb}
+input[type=range]{flex:1;min-width:120px}
+label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
+.dots{display:flex;gap:4px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.dot.on{background:var(--accent)}
+@media (max-width:600px){.src{top:auto;bottom:120px;width:44vw}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="card">
+  <div class="k" id="stepNo">Loading plan…</div>
+  <h1 id="title"></h1>
+  <div class="mate" id="mate"></div>
+  <div class="badges" id="badges"></div>
+  <div class="err" id="err"></div>
+  <details id="partsBox"><summary id="partsSummary">Parts</summary><div id="parts"></div></details>
+  <div class="k" id="status" style="margin-top:8px"></div>
+</div>
+<div class="src" id="src">
+  <img src="assets/rta0097m-p2-step1.png" alt="Manual page 2, step 1">
+  <div class="k" id="srcLabel" style="margin-top:4px"></div>
+</div>
+<div class="bar">
+  <button id="prev">◀ Prev</button>
+  <button id="play">Pause</button>
+  <button id="next">Next ▶</button>
+  <button id="replay">Replay</button>
+  <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Scrub within step">
+  <div class="dots" id="dots"></div>
+  <label><input type="checkbox" id="all" checked>Play all</label>
+  <label><input type="checkbox" id="lineart">Line art</label>
+  <label><input type="checkbox" id="showsrc" checked>Source</label>
+</div>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

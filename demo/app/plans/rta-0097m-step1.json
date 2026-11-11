@@ -1,0 +1,43 @@
+{
+  "schema": "build-plan/0.1",
+  "note": "Hand-written stand-in for the extraction passes' output on RTA-0097M p.1 (parts list) and p.2 (Step 1).",
+  "product": { "model": "RTA-0097M", "name": "Midback Mesh Task Office Chair", "category": "office_chair" },
+  "parts": [
+    {
+      "label": "C", "name": "Nylon star base", "count": 1, "template": "star_base",
+      "params": { "arms": 5 },
+      "provenance": { "arms": "stated" },
+      "features": [
+        { "type": "hole", "name": "bore",   "at": "hub_top_centre",  "diameter": "=E.body_d", "depth": 60 },
+        { "type": "hole", "name": "socket", "at": "arm_tips_bottom", "diameter": "=F.stem_d", "depth": "=F.stem_len" }
+      ]
+    },
+    { "label": "E", "name": "Lift cylinder", "count": 1, "template": "gas_cylinder", "params": {} },
+    { "label": "F", "name": "Casters", "count": 5, "template": "caster", "params": {} },
+    { "label": "H", "name": "Covers for lift cylinder", "count": 1, "template": "telescoping_cover", "params": {} }
+  ],
+  "steps": [
+    {
+      "step": "1a", "title": "Press the 5 casters F into the base C",
+      "places": "C",
+      "moves": [{ "part": "F", "instances": [0, 1, 2, 3, 4] }],
+      "mate": { "type": "pin_in_hole", "this": "F.stem_tip", "other": "C.socket[i]", "fit": "press" },
+      "source": { "page": 2, "bbox": [108, 174, 574, 626] },
+      "confidence": { "votes": "3/3", "render_check": "match" }
+    },
+    {
+      "step": "1b", "title": "Drop lift cylinder E into the centre of C",
+      "moves": [{ "part": "E", "instances": [0] }],
+      "mate": { "type": "pin_in_hole", "this": "E.tip", "other": "C.bore" },
+      "source": { "page": 2, "bbox": [108, 174, 574, 626] },
+      "confidence": { "votes": "3/3", "render_check": "match" }
+    },
+    {
+      "step": "1c", "title": "Slide cover H down over E",
+      "moves": [{ "part": "H", "instances": [0] }],
+      "mate": { "type": "face_to_face", "this": "H.bottom", "other": "C.hub_top" },
+      "source": { "page": 2, "bbox": [108, 174, 574, 626] },
+      "confidence": { "votes": "3/3", "render_check": "match" }
+    }
+  ]
+}
