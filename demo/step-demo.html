@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step animation demo</title>
+<style>
+:root{--bg:#f4f1ec;--panel:#fff;--text:#22201c;--muted:#6b675f;--accent:#d9822b;--border:#ddd8cf}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,system-ui,sans-serif;overflow:hidden}
+#c{display:block;width:100vw;height:100vh;touch-action:none}
+.card{position:absolute;top:16px;left:16px;max-width:min(400px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.k{font-size:12px;color:var(--muted)}
+h1{font-size:16px;font-weight:600;margin:4px 0 6px}
+.mate{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;margin-top:8px;background:#eef3e6;color:#3b6d11}
+.bar{position:absolute;left:16px;right:16px;bottom:16px;display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px 10px;flex-wrap:wrap}
+button{font:inherit;border:1px solid var(--border);background:#faf8f5;border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--text)}
+button:hover{border-color:#bbb}
+input[type=range]{flex:1;min-width:120px}
+label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
+.dots{display:flex;gap:4px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.dot.on{background:var(--accent)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="card">
+  <div class="k" id="stepNo"></div>
+  <h1 id="title"></h1>
+  <div class="mate" id="mate"></div>
+  <span class="badge" id="badge"></span>
+</div>
+<div class="bar">
+  <button id="prev">◀ Prev</button>
+  <button id="play">Pause</button>
+  <button id="next">Next ▶</button>
+  <button id="replay">Replay</button>
+  <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Scrub within step">
+  <div class="dots" id="dots"></div>
+  <label><input type="checkbox" id="all" checked>Play all</label>
+  <label><input type="checkbox" id="lineart">Line art</label>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------- Renderer, camera, lights ----------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0xf4f1ec), WHITE_BG = new THREE.Color(0xffffff);
+scene.background = BG;
+
+const camera = new THREE.PerspectiveCamera(40, 1, 1, 2000);
+camera.position.set(85, 70, 95);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 14, 0);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8ad9c, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+sun.position.set(60, 120, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80 });
+scene.add(sun);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.18 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+const grid = new THREE.GridHelper(200, 20, 0xd8d2c6, 0xe6e1d8);
+scene.add(grid);
+
+// ---------- Part helper: mesh + manual-style edge outline ----------
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x3a342c, transparent: true, opacity: 0.55 });
+const outlined = [];
+const offset = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 };
+function part(geom, mat) {
+  const m = new THREE.Mesh(geom, mat);
+  m.castShadow = m.receiveShadow = true;
+  m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geom, 25), edgeMat));
+  m.userData.mat = mat;
+  outlined.push(m);
+  return m;
+}
+
+// ---------- Geometry (cm). In the real app: templates + manifold-3d in a worker ----------
+const W = 60, D = 40, T = 1.8, INSET = 5, LEG = 45;
+const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+  .map(([sx, sz]) => [sx * (W / 2 - INSET), sz * (D / 2 - INSET)]);
+
+const table = new THREE.Group();           // subassembly "table"
+scene.add(table);
+
+// Tabletop A (panel template), lying face down so its bottom face points up
+const wood = new THREE.MeshStandardMaterial({ color: 0xcfa878, roughness: 0.75, ...offset });
+const top = part(new THREE.BoxGeometry(W, T, D), wood);
+top.position.y = T / 2;
+table.add(top);
+
+// Glow overlay for the mating face (A.bottom)
+const glow = new THREE.Mesh(new THREE.PlaneGeometry(W, D),
+  new THREE.MeshBasicMaterial({ color: 0xf2a23a, transparent: true, opacity: 0, depthWrite: false }));
+glow.rotation.x = -Math.PI / 2;
+glow.position.y = T / 2 + 0.02;
+top.add(glow);
+
+// Holes A.hole[0..3]
+const HOLE = new THREE.Color(0x2a241d), HOT = new THREE.Color(0xf2a23a), BLACK = new THREE.Color(0x000000);
+const holes = corners.map(([x, z]) => {
+  const h = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({ color: HOLE }));
+  h.rotation.x = -Math.PI / 2;
+  h.position.set(x, T / 2 + 0.04, z);
+  top.add(h);
+  return h;
+});
+
+// Hanger bolts C: parametric lathe profile (zig-zag radius suggests the thread) + hex collar
+const pts = [new THREE.Vector2(0, 0)];
+for (let i = 0; i <= 24; i++) pts.push(new THREE.Vector2(i % 2 ? 0.42 : 0.34, i * 0.25));
+pts.push(new THREE.Vector2(0, 6));
+const boltGeom = new THREE.LatheGeometry(pts, 24);
+const collarGeom = new THREE.CylinderGeometry(0.75, 0.75, 0.6, 6).translate(0, 1.8, 0);
+const metal = new THREE.MeshStandardMaterial({ color: 0xa7adb3, metalness: 0.85, roughness: 0.35, ...offset });
+const BOLT_Y = T - 1.5;                     // 15 mm into the hole
+const bolts = corners.map(([x, z]) => {
+  const g = new THREE.Group();
+  g.add(part(boltGeom, metal), part(collarGeom, metal));
+  g.position.set(x, BOLT_Y, z);
+  table.add(g);
+  return g;
+});
+
+// Legs B (leg template, square tapered), origin at the attaching end
+const legGeom = new THREE.CylinderGeometry(1.6, 2.3, LEG, 4, 1).rotateY(Math.PI / 4).translate(0, LEG / 2, 0);
+const legWood = new THREE.MeshStandardMaterial({ color: 0xb98d5e, roughness: 0.7, flatShading: true, ...offset });
+const legs = corners.map(([x, z]) => {
+  const m = part(legGeom, legWood);
+  m.position.set(x, T, z);
+  table.add(m);
+  return m;
+});
+
+// ---------- Steps: what the build plan would produce ----------
+const STEPS = [
+  { title: 'Lay tabletop A face down',                         mate: 'place · A.top → floor',                                  prov: 'Stated',  dur: 1.6 },
+  { title: 'Screw 4 hanger bolts C into the pre-drilled holes', mate: 'pin_in_hole · C.axis → A.hole[0..3], depth 15 mm',       prov: 'Stated',  dur: 3.3 },
+  { title: 'Screw legs B onto the bolts, one per corner',       mate: 'at_corners · B.top → A.bottom, inset 50 mm',              prov: 'Derived', dur: 3.3 },
+  { title: 'Turn the table upright',                            mate: 'subassembly "table" moves as one unit',                   prov: 'Stated',  dur: 2.6 },
+];
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const seg = (t, start, len) => clamp((t - start) / len);
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const UP = new THREE.Quaternion();
+const FLIP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+
+let lineArt = false;
+
+// Pure function of (step, time): this is what makes scrubbing and replay trivial
+function apply(s, t) {
+  const dur = STEPS[s].dur;
+  table.position.set(0, 0, 0);
+  table.quaternion.identity();
+  edgeMat.color.set(lineArt ? 0x000000 : 0x3a342c);
+  glow.material.opacity = 0;
+  holes.forEach(h => h.material.color.copy(lineArt ? BLACK : HOLE));
+
+  // Step 1: tabletop drops into place
+  const p0 = s > 0 ? 1 : ease(seg(t, 0, 1.1));
+  top.position.y = T / 2 + (1 - p0) * 12;
+
+  // Step 2: bolts travel down their hole axes while turning 3 times; holes pulse first
+  bolts.forEach((b, i) => {
+    b.visible = s >= 1;
+    if (!b.visible) return;
+    const start = 0.4 + i * 0.45;
+    const p = s > 1 ? 1 : ease(seg(t, start, 1.3));
+    b.position.y = BOLT_Y + (1 - p) * 9;
+    b.rotation.y = (1 - p) * Math.PI * 2 * 3;
+    if (s === 1 && !lineArt) {
+      const k = seg(t, start - 0.4, 0.6);
+      if (k > 0 && k < 1) holes[i].material.color.copy(HOLE).lerp(HOT, Math.sin(k * Math.PI));
+    }
+  });
+
+  // Step 3: legs approach along the face normal and turn onto the bolts
+  legs.forEach((l, i) => {
+    l.visible = s >= 2;
+    if (!l.visible) return;
+    const p = s > 2 ? 1 : ease(seg(t, 0.2 + i * 0.4, 1.5));
+    l.position.y = T + (1 - p) * 18;
+    l.rotation.y = (1 - p) * Math.PI * 2 * 2;
+  });
+
+  // Mating face glows during steps 2 and 3
+  if ((s === 1 || s === 2) && !lineArt) {
+    glow.material.opacity = 0.28 * (0.65 + 0.35 * Math.sin(t * 6)) * (1 - seg(t, dur - 0.5, 0.5));
+  }
+
+  // Step 4: the finished subassembly flips as one unit, outlined
+  if (s === 3) {
+    const p = ease(seg(t, 0.1, 2.0));
+    table.quaternion.slerpQuaternions(UP, FLIP, p);
+    table.position.y = (LEG + T) * p + 32 * Math.sin(Math.PI * p);
+    if (!lineArt && t < 2.1) edgeMat.color.set(0xd9822b);
+  }
+}
+
+// ---------- Line-art mode (what render-and-compare sends to the model) ----------
+const flatWhite = new THREE.MeshBasicMaterial({ color: 0xffffff, ...offset });
+function setLineArt(on) {
+  lineArt = on;
+  scene.background = on ? WHITE_BG : BG;
+  grid.visible = floor.visible = !on;
+  outlined.forEach(m => m.material = on ? flatWhite : m.userData.mat);
+  edgeMat.opacity = on ? 1 : 0.55;
+}
+
+// ---------- Player UI ----------
+const $ = id => document.getElementById(id);
+let step = 0, t = 0, playing = true;
+STEPS.forEach(() => { const d = document.createElement('div'); d.className = 'dot'; $('dots').appendChild(d); });
+
+function ui() {
+  const S = STEPS[step];
+  $('stepNo').textContent = `Step ${step + 1} of ${STEPS.length}`;
+  $('title').textContent = S.title;
+  $('mate').textContent = S.mate;
+  $('badge').textContent = S.prov;
+  [...$('dots').children].forEach((d, i) => d.classList.toggle('on', i <= step));
+  $('play').textContent = playing ? 'Pause' : 'Play';
+}
+function go(s) { step = clamp(s, 0, STEPS.length - 1); t = 0; playing = true; ui(); }
+
+$('prev').onclick = () => go(step - 1);
+$('next').onclick = () => go(step + 1);
+$('replay').onclick = () => go(step);
+$('play').onclick = () => {
+  if (!playing && t >= STEPS[step].dur) {
+    if (step === STEPS.length - 1) return go($('all').checked ? 0 : step);
+    if ($('all').checked) return go(step + 1);
+    t = 0;
+  }
+  playing = !playing; ui();
+};
+$('scrub').oninput = e => { t = e.target.value / 1000 * STEPS[step].dur; playing = false; ui(); };
+$('lineart').onchange = e => setLineArt(e.target.checked);
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (playing) {
+    t += dt;
+    const dur = STEPS[step].dur;
+    if (t >= dur) {
+      if ($('all').checked && step < STEPS.length - 1) { step++; t = 0; }
+      else { t = dur; playing = false; }
+      ui();
+    }
+  }
+  apply(step, t);
+  $('scrub').value = Math.round(t / STEPS[step].dur * 1000);
+  controls.update();
+  renderer.render(scene, camera);
+});
+ui();
+</script>
+</body>
+</html>
