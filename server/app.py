@@ -3,6 +3,7 @@ Run: .venv/bin/python server/app.py  (listens on 0.0.0.0:8765 so a phone on the 
 import hashlib
 import json
 import os
+import ssl
 import sys
 import threading
 import time
@@ -15,6 +16,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import certifi  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 load_dotenv(ROOT / ".env")
 
@@ -140,7 +142,8 @@ def list_assets():
         headers={"apikey": key, "Accept": "application/json"},
     )
     try:
-        with urlopen(request, timeout=8) as response:
+        # python.org builds on macOS ship without system CA certs, so use certifi's bundle
+        with urlopen(request, timeout=8, context=ssl.create_default_context(cafile=certifi.where())) as response:
             return json.load(response)
     except HTTPError as error:
         if error.code == 404:

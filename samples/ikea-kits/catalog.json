@@ -58,5 +58,203 @@
     "mesh_nodes": 9,
     "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
     "model_license": "CC BY-NC-SA 4.0"
+  },
+  {
+    "article_number": "im-bench-hemnes",
+    "name": "HEMNES bench",
+    "manual_id": "AA-568479-2",
+    "model": "im-bench-hemnes/model.glb",
+    "manual": "im-bench-hemnes/manual.pdf",
+    "mesh_nodes": 12,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-bench-hemnes/steps.json"
+  },
+  {
+    "article_number": "im-bench-silveran",
+    "name": "SILVERAN bench",
+    "manual_id": "AA-955663-4",
+    "model": "im-bench-silveran/model.glb",
+    "manual": "im-bench-silveran/manual.pdf",
+    "mesh_nodes": 11,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-bench-silveran/steps.json"
+  },
+  {
+    "article_number": "im-bench-tjusig",
+    "name": "TJUSIG bench",
+    "manual_id": "AA-354147-1",
+    "model": "im-bench-tjusig/model.glb",
+    "manual": "im-bench-tjusig/manual.pdf",
+    "mesh_nodes": 14,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-bench-tjusig/steps.json"
+  },
+  {
+    "article_number": "im-chair-ronninge",
+    "name": "RONNINGE chair",
+    "manual_id": "AA-2099833-6",
+    "model": "im-chair-ronninge/model.glb",
+    "manual": "im-chair-ronninge/manual.pdf",
+    "mesh_nodes": 8,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-ronninge/steps.json"
+  },
+  {
+    "article_number": "im-chair-teodores",
+    "name": "TEODORES chair",
+    "manual_id": "AA-2024077-14",
+    "model": "im-chair-teodores/model.glb",
+    "manual": "im-chair-teodores/manual.pdf",
+    "mesh_nodes": 9,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-teodores/steps.json"
+  },
+  {
+    "article_number": "im-chair-stig",
+    "name": "STIG chair",
+    "manual_id": "AA-2236505-2",
+    "model": "im-chair-stig/model.glb",
+    "manual": "im-chair-stig/manual.pdf",
+    "mesh_nodes": 10,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-stig/steps.json"
+  },
+  {
+    "article_number": "im-chair-poang-2",
+    "name": "POANG chair",
+    "manual_id": "AA-510890-9",
+    "model": "im-chair-poang-2/model.glb",
+    "manual": "im-chair-poang-2/manual.pdf",
+    "mesh_nodes": 11,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-poang-2/steps.json"
+  },
+  {
+    "article_number": "im-chair-agam",
+    "name": "AGAM chair",
+    "manual_id": "AA-183046-8",
+    "model": "im-chair-agam/model.glb",
+    "manual": "im-chair-agam/manual.pdf",
+    "mesh_nodes": 10,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-agam/steps.json"
+  },
+  {
+    "article_number": "im-chair-lerhamn",
+    "name": "LERHAMN chair",
+    "manual_id": "AA-2139882-3",
+    "model": "im-chair-lerhamn/model.glb",
+    "manual": "im-chair-lerhamn/manual.pdf",
+    "mesh_nodes": 8,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-chair-lerhamn/steps.json"
+  },
+  {
+    "article_number": "im-desk-alex",
+    "name": "ALEX desk",
+    "manual_id": "AA-2241985-2",
+    "model": "im-desk-alex/model.glb",
+    "manual": "im-desk-alex/manual.pdf",
+    "mesh_nodes": 11,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-desk-alex/steps.json"
+  },
+  {
+    "article_number": "im-desk-fredrik",
+    "name": "FREDRIK desk",
+    "manual_id": "AA-220533-7",
+    "model": "im-desk-fredrik/model.glb",
+    "manual": "im-desk-fredrik/manual.pdf",
+    "mesh_nodes": 7,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-desk-fredrik/steps.json"
+  },
+  {
+    "article_number": "im-misc-olivblad",
+    "name": "OLIVBLAD misc",
+    "manual_id": "AA-2270765-3",
+    "model": "im-misc-olivblad/model.glb",
+    "manual": "im-misc-olivblad/manual.pdf",
+    "mesh_nodes": 13,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-misc-olivblad/steps.json"
+  },
+  {
+    "article_number": "im-misc-smussla",
+    "name": "SMUSSLA misc",
+    "manual_id": "AA-2230202-2",
+    "model": "im-misc-smussla/model.glb",
+    "manual": "im-misc-smussla/manual.pdf",
+    "mesh_nodes": 11,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-misc-smussla/steps.json"
+  },
+  {
+    "article_number": "im-shelf-laiva",
+    "name": "LAIVA shelf",
+    "manual_id": "AA-379092-10",
+    "model": "im-shelf-laiva/model.glb",
+    "manual": "im-shelf-laiva/manual.pdf",
+    "mesh_nodes": 19,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-shelf-laiva/steps.json"
+  },
+  {
+    "article_number": "im-shelf-vesken",
+    "name": "VESKEN shelf",
+    "manual_id": "AA-1842283-5",
+    "model": "im-shelf-vesken/model.glb",
+    "manual": "im-shelf-vesken/manual.pdf",
+    "mesh_nodes": 16,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-shelf-vesken/steps.json"
+  },
+  {
+    "article_number": "im-table-tornviken",
+    "name": "TORNVIKEN table",
+    "manual_id": "AA-2100799-4",
+    "model": "im-table-tornviken/model.glb",
+    "manual": "im-table-tornviken/manual.pdf",
+    "mesh_nodes": 12,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-table-tornviken/steps.json"
+  },
+  {
+    "article_number": "im-table-lunnarp",
+    "name": "LUNNARP table",
+    "manual_id": "AA-2050808-3",
+    "model": "im-table-lunnarp/model.glb",
+    "manual": "im-table-lunnarp/manual.pdf",
+    "mesh_nodes": 12,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-table-lunnarp/steps.json"
+  },
+  {
+    "article_number": "im-table-nesna",
+    "name": "NESNA table",
+    "manual_id": "AA-515394-2",
+    "model": "im-table-nesna/model.glb",
+    "manual": "im-table-nesna/manual.pdf",
+    "mesh_nodes": 12,
+    "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
+    "model_license": "IKEA-Manual research dataset (no licence stated)",
+    "reference_steps": "im-table-nesna/steps.json"
   }
 ]

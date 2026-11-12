@@ -96,7 +96,8 @@ def scan_kit(file: UploadFile = File(...)):
             matches = [
                 item for item in kits
                 if (manual_id and normalize(item["manual_id"]) == manual_id
-                    and (not article or item["article_number"] == article))
+                    # IKEA-Manual kits have no real article number, so only the document ID can match them
+                    and (not article or item["article_number"] == article or not item["article_number"].isdigit()))
                 or (not manual_id and article and item["article_number"] == article)
             ]
             if len(matches) != 1:

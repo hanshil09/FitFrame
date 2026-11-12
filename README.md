@@ -48,8 +48,11 @@ Command-line extraction: `.venv/bin/python server/extract_cli.py samples/rta-009
 
 ## IKEA kit player
 
-Open `/kits.html` on the running server. The six research kits are read from
-`samples/ikea-kits/catalog.json`. Select a kit to inspect its finished GLB, then
+Open `/kits.html` on the running server. The kits are read from
+`samples/ikea-kits/catalog.json`: six from IKEA's 3D Assembly Dataset (real article numbers,
+models in metres) and 18 from the IKEA-Manual dataset (`im-…` keys, models about 1 unit across,
+with the dataset's annotated steps in `steps.json`). Add more IKEA-Manual kits with
+`server/tools/import_ikea_manual.py` (usage at the top of the file). Select a kit to inspect its finished GLB, then
 upload its manual to generate the timeline. New scans need the Gemini SDK,
 pypdfium2, and a configured Gemini key. Exact PDF copies are matched by hash.
 
