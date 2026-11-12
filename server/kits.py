@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 import struct
+import traceback
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -133,6 +134,7 @@ def scan_kit(file: UploadFile = File(...)):
     except KeyError as error:
         raise HTTPException(503, "Configure GEMINI_API_KEY in the server .env file.") from error
     except Exception as error:
+        traceback.print_exc()   # the client only sees a generic message, so keep the real cause in the server log
         code = getattr(error, "code", None)
         if code == 429:
             raise HTTPException(503, "Gemini quota is unavailable for the configured models.") from error

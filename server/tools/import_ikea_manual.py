@@ -48,7 +48,38 @@ def read_obj(path):
     return out_p, out_n, tris
 
 
-def write_glb(parts, path, label):
+def describe(parts, equivalent):
+    """Plain-language part names from geometry, so the model has evidence to match manual drawings."""
+    boxes = [([min(p[k] for p in ps) for k in range(3)], [max(p[k] for p in ps) for k in range(3)]) for ps, _, _ in parts]
+    lo = [min(b[0][k] for b in boxes) for k in range(3)]
+    hi = [max(b[1][k] for b in boxes) for k in range(3)]
+    span = [h - l or 1 for l, h in zip(lo, hi)]
+    names = []
+    for i, (a, b) in enumerate(boxes):
+        size = [y - x for x, y in zip(a, b)]
+        L, M, S = sorted(size, reverse=True)
+        axis = size.index(L)
+        if L < 0.12 * max(span):
+            shape = "small fitting"
+        elif M < 0.25 * L:
+            shape = "vertical leg/post" if axis == 1 else "horizontal rail/bar"
+        elif S < 0.2 * M:
+            shape = "vertical panel" if size[1] > 0.5 * M else "horizontal board/top"
+        else:
+            shape = "frame/block"
+        centre = [((x + y) / 2 - l) / s for x, y, l, s in zip(a, b, lo, span)]
+        where = [("bottom", "middle", "top")[min(2, int(centre[1] * 3))],
+                 ("left", "centre", "right")[min(2, int(centre[0] * 3))],
+                 ("back", "middle", "front")[min(2, int(centre[2] * 3))]]
+        text = f"part {i:02d}: {shape}, {round(100 * L / max(span))}% of the overall size, at {' '.join(where)}"
+        twins = sorted(int(p) for p in equivalent.get(str(i), []) if p.isdigit() and int(p) != i)
+        if twins:
+            text += ", same shape as part " + ", ".join(f"{p:02d}" for p in twins)
+        names.append(text)
+    return names
+
+
+def write_glb(parts, path, names):
     blob, views, accessors, meshes, nodes, materials = bytearray(), [], [], [], [], []
 
     def add(data, target, comp, kind, count, extra=None):
@@ -72,7 +103,7 @@ def write_glb(parts, path, label):
             "baseColorFactor": [*PALETTE[i % len(PALETTE)], 1], "metallicFactor": 0, "roughnessFactor": 0.75},
             "doubleSided": True})
         meshes.append({"primitives": [{"attributes": {"POSITION": pos, "NORMAL": nrm}, "indices": idx, "material": i}]})
-        nodes.append({"name": f"{label} part {i:02d}", "mesh": i, "translation": centre})
+        nodes.append({"name": names[i], "mesh": i, "translation": centre})
 
     doc = {"asset": {"version": "2.0", "generator": "import_ikea_manual.py"},
            "scene": 0, "scenes": [{"nodes": list(range(len(nodes)))}], "nodes": nodes, "meshes": meshes,
@@ -113,7 +144,8 @@ def main(root, wanted):
         assert len(objs) == entry["parts_ct"], item
         folder = OUT / key
         folder.mkdir(parents=True, exist_ok=True)
-        write_glb([read_obj(o) for o in objs], folder / "model.glb", label)
+        meshes = [read_obj(o) for o in objs]
+        write_glb(meshes, folder / "model.glb", describe(meshes, entry["geometric_equivalence_relation"]))
         shutil.copyfile(pdfs[0], folder / "manual.pdf")
         steps = [{"step": s["step_id"] + 1, "page": s["page_id"], "parts": s["parts"],
                   "connections": s["connections"]} for s in entry["steps"]]
