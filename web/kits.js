@@ -16,6 +16,9 @@ const views = ['left','right'].map(id => {
   return {scene,renderer,host:$(id)};
 });
 const controls = new OrbitControls(camera,views[0].renderer.domElement);
+const GLOW = new THREE.Color(0xff8a1f);   // the parts being fitted in this step
+let glide;                                // camera move towards the parts of the current step
+controls.addEventListener('start',() => { glide = undefined; });   // the user's own orbit wins
 const loader = new GLTFLoader();
 const assemblyCenter = new THREE.Vector3();
 let catalog, kit, model, parts, prediction, actions = [], step = 0, started = 0;
@@ -128,11 +131,23 @@ function updateControls() {
   $('play').textContent = playing ? 'Pause' : 'Play all';
 }
 
+// Centre the view between the whole product and the parts this step fits, so the move stays in frame
+function focusOn(action) {
+  const box = new THREE.Box3();
+  for (const id of action?.nodes ?? []) {
+    const part = parts.get(id);
+    if (part) box.expandByPoint(part.worldPosition);
+  }
+  const to = box.isEmpty() ? assemblyCenter.clone() : box.getCenter(new THREE.Vector3()).lerp(assemblyCenter,.35);
+  if (to.distanceTo(controls.target) > 1e-6) glide = {t:0,from:controls.target.clone(),to};
+}
+
 function showStep(index) {
   step = index;
   started = performance.now();
   const action = actions[index];
   $('step').textContent = action ? 'Step ' + action.step + ' · ' + action.caption : 'Finished IKEA model';
+  if (parts) focusOn(action);
   $('source').hidden = !action;
   if (action) {
     $('page-image').hidden = !referenceSource;
@@ -207,6 +222,19 @@ async function load(item) {
     for (const resource of resources) resource.dispose();
   }
   model = asset.scene;
+  model.traverse(node => {
+    if (!node.isMesh) return;
+    node.material = [node.material].flat().map(material => {
+      const own = material.clone();
+      own.userData.baseEmissive = (own.emissive ?? new THREE.Color()).clone();
+      return own;
+    });
+    if (node.material.length === 1) node.material = node.material[0];
+  });
+  for (const part of mapped.values()) {
+    part.materials = [];
+    part.object.traverse(node => { if (node.isMesh) part.materials.push(...[node.material].flat().filter(m => m.emissive)); });
+  }
   parts = mapped;
   extras = [];
   kit = item;
@@ -280,7 +308,7 @@ function tick(now) {
   // Per-part motions come from the server (worked out from the finished model); a saved plan may
   // instead carry one hand-entered offset for the whole action.
   const keyed = Boolean(action?.motions || action?.start_offset);
-  const eased = 1-(1-progress)**2;
+  const eased = progress < .5 ? 4*progress**3 : 1-(-2*progress+2)**3/2;
   const predictedStep = prediction?.steps.findIndex(item => item.step === action?.step) ?? -1;
   const compared = prediction ? posesThrough(predictedStep) : new Map();
   const usePrediction = $('use-pa').checked && prediction && action;
@@ -341,6 +369,21 @@ function tick(now) {
     if (active.has(id) && action.motion === 'tighten' && isFastener && action.entry_target === undefined && !keyed) {
       object.rotateOnAxis(localAxis,(progress-1)*Math.PI*2);
     }
+  }
+  // Glow on the parts being fitted, fading out once they are seated
+  const settle = Math.min(1,Math.max(0,(now-started-interval*.75)/350));
+  for (const [id,part] of parts) {
+    const k = action && active.has(id) ? 0.32*(1-settle) : 0;
+    for (const material of part.materials) material.emissive.copy(material.userData.baseEmissive).lerp(GLOW,k);
+  }
+  if (glide) {
+    glide.t = Math.min(1,glide.t+(now-(glide.last ?? now))/700);
+    glide.last = now;
+    const k = glide.t < .5 ? 4*glide.t**3 : 1-(-2*glide.t+2)**3/2;
+    const target = glide.from.clone().lerp(glide.to,k);
+    camera.position.add(target.clone().sub(controls.target));
+    controls.target.copy(target);
+    if (glide.t >= 1) glide = undefined;
   }
   draw(views[0]);
   recordFrame?.();

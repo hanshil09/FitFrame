@@ -123,6 +123,7 @@ const MATERIALS = {
   mesh:   new THREE.MeshStandardMaterial({ color: 0x1f2024, roughness: 0.8, transparent: true, opacity: 0.85, side: THREE.DoubleSide, ...offset }),
   unsupported: new THREE.MeshStandardMaterial({ color: 0xd9822b, roughness: 0.7, transparent: true, opacity: 0.55, ...offset }),
 };
+const GLOW = new THREE.Color(0xff8a1f);   // the part being fitted
 const flatWhite = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, ...offset });
 const edgeMat = new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.5 });
 const meshes = [];
@@ -165,9 +166,12 @@ async function startPlayer(plan, jobId) {
       const g = new THREE.Group();
       g.matrixAutoUpdate = false;
       for (const b of p.bodies) {
-        const m = new THREE.Mesh(b.geom, b.material);
+        const mat = b.material.clone();        // per instance, so one copy can glow on its own
+        mat.emissive = GLOW;
+        mat.emissiveIntensity = 0;
+        const m = new THREE.Mesh(b.geom, mat);
         m.castShadow = m.receiveShadow = true;
-        m.userData.mat = b.material;
+        m.userData.mat = mat;
         m.add(new THREE.LineSegments(b.edges, edgeMat));
         meshes.push(m);
         g.add(m);
@@ -220,8 +224,20 @@ function focusStep(i) {
   const entries = [...st.info.after].filter(([k]) => keys.has(k));
   const v = viewFor(entries.length ? entries : [...st.info.after], state.parts, st.groundAfter);
   if (!v) return;
-  const offsetDir = camera.position.clone().sub(controls.target).normalize();
   const dist = v.pos.distanceTo(v.target);
+  // Look from the side the part comes in from, across its path, so the move is never hidden behind
+  // what it joins. Start from the current view so the camera turns as little as it can.
+  const offsetDir = camera.position.clone().sub(controls.target).normalize();
+  const main = st.moves.reduce((best, m) => (!best || m.S.p.distanceTo(m.F.p) > best.S.p.distanceTo(best.F.p) ? m : best), null);
+  const from = main && main.S.p.clone().sub(main.F.p);
+  if (from && from.length() > 1) {
+    from.normalize();
+    const across = offsetDir.clone().addScaledVector(from, -offsetDir.dot(from));
+    if (across.lengthSq() < 1e-4) across.set(1, 0, 0);
+    offsetDir.copy(across.normalize().multiplyScalar(0.8).addScaledVector(from, 0.6));
+  }
+  offsetDir.y = clamp(offsetDir.y, 0.25, 0.7);   // never level with the floor or straight down
+  offsetDir.normalize();
   camMove = { t: 0, fromT: controls.target.clone(), toT: v.target, fromP: camera.position.clone(), toP: v.target.clone().add(offsetDir.multiplyScalar(dist)) };
 }
 
@@ -253,13 +269,41 @@ function buildTimeline(solved, parts) {
     const moves = info.moves.map(m => {
       const travel = m.from ? 1.8 : m.fit === 'press' ? 0.75 : m.fit === 'screw' ? 1.2 : 1.3;
       const t0 = intro + 0.2 + units.indexOf(m.unit) * stagger;
-      return { ...m, t0, t1: t0 + travel, A: m.from && decompose(m.from), S: decompose(m.start), F: decompose(m.final),
+      const mv = { ...m, t0, t1: t0 + travel, A: m.from && decompose(m.from), S: decompose(m.start), F: decompose(m.final),
         marker: m.marker ? makeMarker(m.target) : null };
+      mv.ghost = makeGhost(parts[m.key.split('#')[0]], m.final);
+      mv.path = makePath([mv.A?.p, mv.S.p, mv.F.p].filter(Boolean));
+      return mv;
     });
     const tEnd = moves.length ? Math.max(...moves.map(m => m.t1)) : intro + 0.6;
     return { info, step: info.step, shownBefore, placed, moves, groundBefore, lifted, groundAfter, intro,
       down: tEnd + 0.15, dur: tEnd + 1.2 };
   });
+}
+
+// Faint copy of a part at the place it is about to go
+function makeGhost(part, matrix) {
+  const material = new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0, depthWrite: false });
+  const g = new THREE.Group();
+  for (const b of part.bodies) g.add(new THREE.Mesh(b.geom, material));
+  g.matrixAutoUpdate = false;
+  g.matrix.copy(matrix);
+  g.visible = false;
+  g.userData.material = material;
+  rig.add(g);
+  return g;
+}
+
+// Dashed guide along the route a part travels (lift-off, then the final approach)
+function makePath(points) {
+  if (points.length < 2 || points[0].distanceTo(points[points.length - 1]) < 15) return null;
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineDashedMaterial({ color: 0xd9822b, dashSize: 14, gapSize: 9, transparent: true, opacity: 0, depthWrite: false }));
+  line.computeLineDistances();
+  line.visible = false;
+  line.renderOrder = 2;
+  rig.add(line);
+  return line;
 }
 
 function makeMarker(target) {
@@ -280,13 +324,22 @@ const spinQ = new THREE.Quaternion();
 function apply(s, t) {
   const { timeline, instances } = state;
   for (const { group } of instances.values()) group.visible = false;
-  timeline.forEach(st => st.moves.forEach(m => { if (m.marker) m.marker.visible = false; }));
+  for (const mesh of meshes) mesh.userData.mat.emissiveIntensity = 0;
+  timeline.forEach(st => st.moves.forEach(m => {
+    if (m.marker) m.marker.visible = false;
+    m.ghost.visible = false;
+    if (m.path) m.path.visible = false;
+  }));
+  const glow = (key, k) => { if (k > 0) for (const mesh of instances.get(key).group.children) mesh.userData.mat.emissiveIntensity = 0.3 * k; };
   const showKey = (key, m) => { const g = instances.get(key).group; g.matrix.copy(m); g.visible = true; };
   const st = timeline[s];
 
   st.shownBefore.forEach(([k, m]) => showKey(k, m));
   const drop = (1 - ease(seg(t, 0, 0.8))) * 150;
-  st.placed.forEach(([k, m]) => showKey(k, tmp.copy(m).premultiply(new THREE.Matrix4().makeTranslation(0, drop, 0))));
+  st.placed.forEach(([k, m]) => {
+    showKey(k, tmp.copy(m).premultiply(new THREE.Matrix4().makeTranslation(0, drop, 0)));
+    glow(k, 1 - seg(t, 0.6, 0.6));
+  });
 
   for (const m of st.moves) {
     const raw = seg(t, m.t0, m.t1 - m.t0);
@@ -300,10 +353,28 @@ function apply(s, t) {
       if (m.fit === 'screw') quat.premultiply(spinQ.setFromAxisAngle(m.target.n, (1 - p) * Math.PI * 6));
     }
     showKey(m.key, tmp.compose(pos, quat, one));
+    // glow from just before it moves until a moment after it is seated
+    glow(m.key, Math.min(seg(t, m.t0 - 0.35, 0.35), 1 - seg(t, m.t1 + 0.25, 0.6)));
+    // ghost at the destination fades in first, then fades as the part arrives
+    const appear = seg(t, m.t0 - 0.6, 0.45), arrive = seg(t, m.t1 - 0.35, 0.35);
+    m.ghost.visible = !lineArt && appear > 0 && arrive < 1;
+    m.ghost.userData.material.opacity = 0.28 * appear * (1 - arrive);
+    if (m.path) {
+      m.path.visible = appear > 0 && arrive < 1;
+      m.path.material.opacity = 0.85 * appear * (1 - arrive);
+      m.path.material.color.set(lineArt ? 0x000000 : 0xd9822b);
+    }
     if (m.marker) {
-      const k = seg(t, m.t0 - 0.45, 0.75);
-      m.marker.visible = !lineArt && k > 0 && k < 1;
-      m.marker.material.opacity = Math.sin(k * Math.PI) * 0.9;
+      const k = seg(t, m.t0 - 0.45, 0.75), seat = seg(t, m.t1 - 0.05, 0.45);
+      if (k < 1) {          // pulse on the target before the part arrives
+        m.marker.visible = !lineArt && k > 0;
+        m.marker.material.opacity = Math.sin(k * Math.PI) * 0.9;
+        m.marker.scale.setScalar(1);
+      } else {              // a ring that spreads out as it seats
+        m.marker.visible = !lineArt && seat > 0 && seat < 1;
+        m.marker.material.opacity = (1 - seat) * 0.8;
+        m.marker.scale.setScalar(1 + seat * 1.2);
+      }
     }
   }
   rig.position.y = t < st.down
@@ -414,7 +485,7 @@ renderer.setAnimationLoop(() => {
   apply(step, t);
   $('scrub').value = Math.round(t / dur() * 1000);
   if (camMove) {
-    camMove.t = Math.min(1, camMove.t + dt / 0.8);
+    camMove.t = Math.min(1, camMove.t + dt / 1.1);
     const k = ease(camMove.t);
     controls.target.lerpVectors(camMove.fromT, camMove.toT, k);
     camera.position.lerpVectors(camMove.fromP, camMove.toP, k);
