@@ -38,7 +38,7 @@ Settings live in `.env` (never committed, never sent to the browser):
 | `GEMINI_API_KEY` | — | Google AI Studio key |
 | `MODEL_PROVIDER` | `gemini` | Model backend |
 | `GEMINI_MODEL` | `gemini-3.5-flash` | Model name |
-| `VOTES` | `3` | Runs per step for the majority vote |
+| `VOTES` | `1` | Runs per step for the majority vote |
 
 Plans are cached by file hash in `server/jobs/cache/`, so re-scanning the same manual
 costs nothing. Tick "Re-read with the model" to force a fresh run.

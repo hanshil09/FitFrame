@@ -91,3 +91,7 @@ server/jobs/
 ios/**/xcuserdata/
 ios/**/DerivedData/
 .DS_Store
+
+# Blender auto-backups
+*.blend1
+*.blend2
