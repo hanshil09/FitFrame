@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { resolvePlan } from './resolver.js';
-import { solve } from './solver.js';
+import { solve, solveLayout } from './solver.js';
 
 const $ = id => document.getElementById(id);
 const show = id => document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
@@ -98,6 +98,7 @@ const MATERIALS = {
   rubber: new THREE.MeshStandardMaterial({ color: 0x3a3a3e, roughness: 0.85, ...offset }),
   paint:  new THREE.MeshStandardMaterial({ color: 0x1c1c1e, metalness: 0.6, roughness: 0.3, ...offset }),
   chrome: new THREE.MeshStandardMaterial({ color: 0xe6e6e6, metalness: 1, roughness: 0.12, ...offset }),
+  wood:   new THREE.MeshStandardMaterial({ color: 0xc8a26a, roughness: 0.8, ...offset }),
   panel:  new THREE.MeshStandardMaterial({ color: 0x4a4a50, roughness: 0.6, ...offset }),
   fabric: new THREE.MeshStandardMaterial({ color: 0x33353a, roughness: 0.95, ...offset }),
   mesh:   new THREE.MeshStandardMaterial({ color: 0x1f2024, roughness: 0.8, transparent: true, opacity: 0.85, side: THREE.DoubleSide, ...offset }),
@@ -118,7 +119,7 @@ async function startPlayer(plan, jobId) {
   const built = await new Promise((res, rej) => {
     worker.onmessage = e => e.data.ok ? res(e.data) : rej(new Error(e.data.error));
     worker.onerror = e => rej(new Error(e.message || 'geometry worker failed to load'));
-    worker.postMessage({ parts: resolved.map(p => ({ label: p.label, template: p.template, params: p.params, features: p.features })) });
+    worker.postMessage({ parts: resolved.map(p => ({ label: p.label, template: p.template, kind: p.kind, params: p.params, features: p.features })) });
   }).catch(err => { $('stepNo').textContent = 'Could not build geometry'; $('status').innerHTML = `<span class="err">${esc(err.message)}</span>`; throw err; });
   const usage = plan.usage ? ` · ${plan.usage.calls} model calls` : '';
   $('status').textContent = `${plan.product?.name ?? ''} · built ${built.parts.length} parts in ${built.ms.toFixed(0)} ms${usage}`;
@@ -158,7 +159,7 @@ async function startPlayer(plan, jobId) {
     }
   }
 
-  const solved = solve(plan, parts);
+  const solved = plan.layout ? solveLayout(plan, parts) : solve(plan, parts);
   const timeline = buildTimeline(solved, parts);
   state = { plan, timeline, instances, jobId, parts, pageImgs: {} };
   frameCamera(solved, parts);
@@ -344,7 +345,7 @@ function ui() {
   $('mate').textContent = `${s.mate.type} · ${s.mate.this} → ${s.mate.other}${s.mate.fit ? ` (${s.mate.fit})` : ''}`;
   const votes = s.confidence?.votes ?? '';
   const [a, b] = votes.split('/').map(Number);
-  $('badges').innerHTML = `<span class="tag ${a === b ? 'stated' : a > b / 2 ? 'estimated' : 'warn'}">votes ${esc(votes)}</span>`;
+  $('badges').innerHTML = !votes ? '' : `<span class="tag ${a === b ? 'stated' : a > b / 2 ? 'estimated' : 'warn'}">votes ${esc(votes)}</span>`;
   const notes = state.plan.issues?.filter(i => i.step === s.step) ?? [];
   if (st.info.skipped) notes.unshift({ msg: `Not animated: ${st.info.skipped}` });
   $('stepIssues').innerHTML = notes.map(i => `<div class="issue">${esc(i.msg)}</div>`).join('');

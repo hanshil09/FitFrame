@@ -26,6 +26,16 @@ const DEFAULT_FEATURES = {
   ],
 };
 
+// Which hardware shape to draw, from the part's name when the plan does not say
+function hardwareKind(name = '') {
+  const n = name.toLowerCase();
+  if (/dowel|peg/.test(n)) return 'dowel';
+  if (/foot|feet|glide|level/.test(n)) return 'foot';
+  if (/cam/.test(n)) return /pin|bolt|screw|stud|dowel/.test(n) ? 'cam_pin' : 'cam_nut';
+  if (/connecting bolt/.test(n)) return 'cam_pin';
+  return 'screw';
+}
+
 const isRef = v => typeof v === 'string' && v.startsWith('=');
 const clampDim = v => Math.min(3000, Math.max(2, Number(v) || 0));
 
@@ -44,7 +54,8 @@ export function resolvePlan(plan, userValues = {}) {
     if (template === 'panel' || template === 'unsupported') for (const k of ['w', 'h', 'd']) params[k] = clampDim(params[k]);
     const fromPlan = !!p.features?.length;
     const features = (fromPlan ? p.features : DEFAULT_FEATURES[template] ?? []).map(f => ({ ...f, fromPlan }));
-    return { ...p, template, params, provenance, features };
+    const kind = template === 'fastener' ? (p.kind ?? hardwareKind(p.name)) : undefined;
+    return { ...p, template, kind, params, provenance, features };
   });
 
   // Equations between parts: "=F.stem_len" (by label) or "=caster.stem_len" (by template)

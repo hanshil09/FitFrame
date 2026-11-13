@@ -43,6 +43,14 @@ Settings live in `.env` (never committed, never sent to the browser):
 Plans are cached by file hash in `server/jobs/cache/`, so re-scanning the same manual
 costs nothing. Tick "Re-read with the model" to force a fresh run.
 
+A scan of an 8-page manual makes 8 to 10 model calls; the Gemini free tier allows 20 a day per model.
+
+When every structural part is a plain board (IKEA-style manuals that only number the hardware), the server
+labels the boards P1, P2, ... and adds a layout pass: the model says where each board sits in the finished
+product, and the player moves boards into those places (`solveLayout` in `web/solver.js`) instead of chaining
+face-to-face mates. Hardware is drawn by kind and placed per face at the spots the model reads from the
+drawing. This path has only been checked in the player with a hand-assembled plan, not with a full scan.
+
 Command-line extraction: `.venv/bin/python server/extract_cli.py samples/rta-0097m.pdf out.json`
 
 ## Install on an iPhone

@@ -25,13 +25,15 @@ class GeminiProvider(Provider):
         from google import genai
         from google.genai import types
         self.fail_fast = fail_fast
-        http_options = types.HttpOptions(timeout=20000) if fail_fast else None
+        # Without a limit, a stalled connection leaves the scan hanging forever
+        http_options = types.HttpOptions(timeout=20000 if fail_fast else 180000)
         self.client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=http_options)
         # Free-tier quotas are per model per day, so when one runs out we move to the next
         first = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
         extra = os.environ.get("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite")
         self.models = [first] + [m.strip() for m in extra.split(",") if m.strip() and m.strip() != first]
         self.model = self.models[0]
+        self.spent = set()       # models whose daily quota is used up or that do not exist
         self.calls = 0
         self.tokens_in = 0
         self.tokens_out = 0
@@ -40,7 +42,9 @@ class GeminiProvider(Provider):
         from google.genai import types, errors
         parts = [types.Part.from_bytes(data=img, mime_type="image/png") for img in images] + [prompt]
         cfg = types.GenerateContentConfig(temperature=temperature, response_mime_type="application/json", response_schema=schema)
-        delay = 4.0
+        delay, busy = 4.0, 0
+        # An overloaded model is only skipped for the call that hit it; the next call tries the best model again
+        self.model = next((m for m in self.models if m not in self.spent), self.models[-1])
         attempts = min(len(self.models), 3) if self.fail_fast else 8
         for attempt in range(attempts):
             try:
@@ -52,7 +56,11 @@ class GeminiProvider(Provider):
                 if r.parsed is not None:
                     return r.parsed
                 return schema.model_validate(json.loads(r.text))
-            except errors.APIError as e:
+            except Exception as e:
+                if "timeout" in type(e).__name__.lower() and not self.fail_fast and attempt < 2:
+                    continue   # the call stalled; try it again
+                if not isinstance(e, errors.APIError):
+                    raise
                 code, msg = getattr(e, "code", None), str(e)
                 daily = code == 429 and "PerDay" in msg
                 gone = code == 404
@@ -62,6 +70,7 @@ class GeminiProvider(Provider):
                         continue
                     raise
                 if daily or gone:
+                    self.spent.add(self.model)
                     i = self.models.index(self.model)
                     if i + 1 < len(self.models):
                         self.model = self.models[i + 1]   # quota for this model is used up today
@@ -70,6 +79,11 @@ class GeminiProvider(Provider):
                                        "Try again tomorrow, or set a paid key / another provider in .env.") from e
                 # per-minute limit or a transient server error: back off and retry
                 if code in (429, 500, 502, 503, 504) and attempt < 7:
+                    busy += code != 429
+                    i = self.models.index(self.model)
+                    if busy >= 3 and i + 1 < len(self.models):
+                        self.model, busy, delay = self.models[i + 1], 0, 4.0   # this model stays overloaded; use the next
+                        continue
                     time.sleep(delay)
                     delay = min(delay * 2, 60)
                     continue

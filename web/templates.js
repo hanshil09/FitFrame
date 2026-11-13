@@ -110,16 +110,40 @@ function block(w, p, material) {
 TEMPLATES.panel = (w, p) => block(w, p, 'panel');
 TEMPLATES.unsupported = (w, p) => block(w, p, 'unsupported');
 
-// Screws, bolts, pins: a lathe profile from diameter and length. Origin = the tip.
-TEMPLATES.fastener = (w, p) => {
-  const { CrossSection } = w;
-  const r = p.diameter / 2, L = p.length, R = r * 1.9, hh = Math.max(2, p.diameter * 0.6);
-  const solid = new CrossSection([[[0, 0], [r * 0.45, 0], [r, Math.min(r * 1.4, L * 0.3)], [r, L], [R, L], [R, L + hh], [0, L + hh]]]).revolve(32);
-  return {
-    bodies: [{ name: 'body', material: 'chrome', solid }],
+// Hardware, drawn by kind from diameter and length. Origin = the tip that goes in first; the axis is +Z.
+TEMPLATES.fastener = (w, p, spec = {}) => {
+  const { CrossSection, Manifold } = w;
+  const r = p.diameter / 2, L = p.length;
+  const lathe = pts => new CrossSection([pts]).revolve(32);
+  const make = (solid, material, embed, top) => ({
+    bodies: [{ name: 'body', material, solid }],
     sites: {},
-    anchors: { tip: { o: [0, 0, 0], n: [0, 0, -1], embed: L * 0.85 }, head: { o: [0, 0, L + hh], n: [0, 0, 1] } },
-  };
+    anchors: { tip: { o: [0, 0, 0], n: [0, 0, -1], embed }, head: { o: [0, 0, top], n: [0, 0, 1] } },
+  });
+  switch (spec.kind) {
+    case 'dowel': {            // plain wooden peg, half of it goes in
+      const c = Math.min(r * 0.3, 1.5);
+      return make(lathe([[0, 0], [r - c, 0], [r, c], [r, L - c], [r - c, L], [0, L]]), 'wood', L * 0.5, L);
+    }
+    case 'cam_pin': {          // threaded end, collar, thin neck, round head that the cam lock grips
+      const a = L * 0.38, b = L * 0.46, h = L * 0.84;
+      return make(lathe([[0, 0], [r * 0.5, 0], [r, r * 0.8], [r, a], [r * 1.45, a], [r * 1.45, b], [r * 0.6, b],
+        [r * 0.6, h], [r * 1.05, h + r * 0.4], [r * 1.05, L - r * 0.3], [r * 0.7, L], [0, L]]), 'chrome', a, L);
+    }
+    case 'cam_nut': {          // round cam lock with a screwdriver slot, sits flush in its hole
+      const slot = Manifold.cube([r * 1.4, r * 0.3, L * 0.35]).translate([-r * 0.7, -r * 0.15, L * 0.66]);
+      return make(Manifold.cylinder(L, r, r, 32).subtract(slot), 'chrome', L * 0.98, L);
+    }
+    case 'foot': {             // threaded stem with a wide pad
+      const R = Math.max(r * 2.4, 11), pad = 7;
+      return make(lathe([[0, 0], [r, 0], [r, L], [R, L], [R, L + pad], [0, L + pad]]), 'nylon', L, L + pad);
+    }
+    default: {                 // screw or bolt
+      const R = r * 1.9, hh = Math.max(2, p.diameter * 0.6);
+      return make(lathe([[0, 0], [r * 0.45, 0], [r, Math.min(r * 1.4, L * 0.3)], [r, L], [R, L], [R, L + hh], [0, L + hh]]),
+        'chrome', L * 0.85, L + hh);
+    }
+  }
 };
 
 // ---------- Chair parts ----------
@@ -272,7 +296,7 @@ const norm = v => { const l = Math.hypot(...v); return v.map(x => x / l); };
 export function buildPart(w, spec) {
   const tpl = TEMPLATES[spec.template];
   if (!tpl) throw new Error(`No template "${spec.template}"`);
-  const part = tpl(w, spec.params);
+  const part = tpl(w, spec.params, spec);
   for (const f of spec.features ?? []) applyFeature(w, part, f);
   return part;
 }

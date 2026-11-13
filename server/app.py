@@ -86,6 +86,7 @@ async def create_job(files: list[UploadFile] = File(...), fresh: bool = False):
     h = hashlib.sha256()
     for name, data in payload:
         h.update(data)
+    h.update(pipeline.VERSION.encode())
     digest = h.hexdigest()[:16]
     if fresh:
         (CACHE_DIR / f"{digest}.json").unlink(missing_ok=True)
@@ -100,7 +101,7 @@ async def create_job(files: list[UploadFile] = File(...), fresh: bool = False):
 async def sample_job(fresh: bool = False):
     """Runs the bundled RTA-0097M chair manual (handy on a phone with no PDF at hand)."""
     data = (ROOT / "samples" / "rta-0097m.pdf").read_bytes()
-    digest = hashlib.sha256(data).hexdigest()[:16]
+    digest = hashlib.sha256(data + pipeline.VERSION.encode()).hexdigest()[:16]
     if fresh:
         (CACHE_DIR / f"{digest}.json").unlink(missing_ok=True)
     job_id = uuid.uuid4().hex[:10]
