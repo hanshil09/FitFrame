@@ -6,6 +6,12 @@
       "runtimeExecutable": ".venv/bin/python",
       "runtimeArgs": ["server/app.py"],
       "port": 8765
+    },
+    {
+      "name": "app-windows",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["server/app.py"],
+      "port": 8765
     }
   ]
 }

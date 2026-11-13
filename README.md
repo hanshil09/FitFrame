@@ -13,10 +13,19 @@ app plays each step as a 3D animation built from part templates and a mate solve
 | `samples/` | The RTA-0097M chair manual used for testing |
 | `demo/` | Earlier standalone demos |
 
-## Run the server (on the Mac)
+## Run the server
+
+First time, create the environment and install the packages:
 
 ```bash
-.venv/bin/python server/app.py
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt        # Windows: .venv\Scripts\python.exe
+```
+
+Then start it:
+
+```bash
+.venv/bin/python server/app.py                             # Windows: .venv\Scripts\python.exe server/app.py
 ```
 
 It listens on port 8765 on all interfaces. Open http://localhost:8765 on the Mac, or
