@@ -1,0 +1,41 @@
+{
+  "actions": [
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Start with the first side frame",
+      "nodes": [
+        1
+      ],
+      "motion": "place",
+      "entry_target": 3,
+      "distance": 0
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Slide the front lower rail onto the side frame",
+      "nodes": [
+        3
+      ],
+      "motion": "slide",
+      "entry_target": 1,
+      "distance": 0.16
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Start the screw from outside. Leave the head slightly raised.",
+      "nodes": [
+        10
+      ],
+      "motion": "tighten",
+      "entry_target": 3,
+      "distance": 0.1,
+      "seat_offset": 0.008
+    }
+  ],
+  "unresolved": [
+    "This checked preview covers the first rail joint only."
+  ]
+}

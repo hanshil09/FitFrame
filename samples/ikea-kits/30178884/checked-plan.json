@@ -1,0 +1,625 @@
+{
+  "actions": [
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Start with the first side frame",
+      "nodes": [
+        1
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Seat the front lower rail",
+      "nodes": [
+        3
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0.16
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Start the screw from outside. Leave the head slightly raised.",
+      "nodes": [
+        10
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        -0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Seat the rear lower rail",
+      "nodes": [
+        4
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0.16
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "1",
+      "page": 3,
+      "caption": "Start the screw from outside. Leave the head slightly raised.",
+      "nodes": [
+        17
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        -0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "2",
+      "page": 4,
+      "caption": "Seat the front upper rail",
+      "nodes": [
+        8
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0.16
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "2",
+      "page": 4,
+      "caption": "Start the screw from outside. Leave the head slightly raised.",
+      "nodes": [
+        14
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        -0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "2",
+      "page": 4,
+      "caption": "Seat the rear upper rail",
+      "nodes": [
+        9
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0.16
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "2",
+      "page": 4,
+      "caption": "Start the screw from outside. Leave the head slightly raised.",
+      "nodes": [
+        13
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        -0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "3",
+      "page": 4,
+      "caption": "Position the lower step to insert the dowels",
+      "nodes": [
+        21
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0.15,
+        0
+      ],
+      "end_offset": [
+        0,
+        0.15,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "3",
+      "page": 4,
+      "caption": "Press dowel 1 into the lower step",
+      "nodes": [
+        5
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0.15,
+        0.065
+      ],
+      "end_offset": [
+        0,
+        0.15,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "3",
+      "page": 4,
+      "caption": "Press dowel 2 into the lower step",
+      "nodes": [
+        6
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0.15,
+        -0.065
+      ],
+      "end_offset": [
+        0,
+        0.15,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "3",
+      "page": 4,
+      "caption": "Seat the lower step and dowels in the first side frame",
+      "nodes": [
+        21,
+        5,
+        6
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0.15,
+        0.035
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "4",
+      "page": 4,
+      "caption": "Slide the second side frame onto the rail ends",
+      "nodes": [
+        2
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0.19
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "4",
+      "page": 4,
+      "caption": "Start screw 1 of 4 from outside. Leave the head raised.",
+      "nodes": [
+        16
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "4",
+      "page": 4,
+      "caption": "Start screw 2 of 4 from outside. Leave the head raised.",
+      "nodes": [
+        15
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "4",
+      "page": 4,
+      "caption": "Start screw 3 of 4 from outside. Leave the head raised.",
+      "nodes": [
+        12
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "4",
+      "page": 4,
+      "caption": "Start screw 4 of 4 from outside. Leave the head raised.",
+      "nodes": [
+        11
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.0087,
+        0.09960000000000001
+      ],
+      "end_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "turns": 1.5
+    },
+    {
+      "step": "5",
+      "page": 3,
+      "caption": "Join the top panel to the frame",
+      "nodes": [
+        7
+      ],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0.12,
+        0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    },
+    {
+      "step": "5",
+      "page": 3,
+      "caption": "Drive screw 1 of 3 from underneath.",
+      "nodes": [
+        18
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        -0.105,
+        0.0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 2
+    },
+    {
+      "step": "5",
+      "page": 3,
+      "caption": "Drive screw 2 of 3 from underneath.",
+      "nodes": [
+        19
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        -0.105,
+        0.0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 2
+    },
+    {
+      "step": "5",
+      "page": 3,
+      "caption": "Drive screw 3 of 3 from underneath.",
+      "nodes": [
+        20
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        -0.105,
+        0.0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 2
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 1 of 8.",
+      "nodes": [
+        10
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        -0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 2 of 8.",
+      "nodes": [
+        11
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 3 of 8.",
+      "nodes": [
+        12
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 4 of 8.",
+      "nodes": [
+        13
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        -0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 5 of 8.",
+      "nodes": [
+        14
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        -0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 6 of 8.",
+      "nodes": [
+        15
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 7 of 8.",
+      "nodes": [
+        16
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Fully tighten side screw 8 of 8.",
+      "nodes": [
+        17
+      ],
+      "motion": "tighten",
+      "start_offset": [
+        0.0,
+        0.000696,
+        -0.007968
+      ],
+      "end_offset": [
+        0,
+        0.0,
+        -0.0
+      ],
+      "turns": 1
+    },
+    {
+      "step": "6",
+      "page": 2,
+      "caption": "Assembly complete",
+      "nodes": [],
+      "motion": "place",
+      "start_offset": [
+        0,
+        0,
+        0
+      ],
+      "end_offset": [
+        0,
+        0,
+        0
+      ],
+      "turns": 0
+    }
+  ],
+  "unresolved": []
+}

@@ -21,8 +21,100 @@ const assemblyCenter = new THREE.Vector3();
 let catalog, kit, model, parts, prediction, actions = [], step = 0, started = 0;
 let busy = false, playing = false, recording = false, recordFrame, travel, sourceUrl, referenceSource = false;
 const interval = 1700;
+let extras = [];                         // ids of hardware drawn in because the model leaves it out
+const hardwareMeshes = new Map();        // IKEA part number -> real hardware mesh from the server
+const HARDWARE_LOOK = {
+  screw: {color:0x9aa3ab,metalness:.8,roughness:.35},
+  dowel: {color:0xc89b62,metalness:0,roughness:.8},
+  cam_nut: {color:0xb9c0c6,metalness:.8,roughness:.3}
+};
 
 function status(message) { $('status').textContent = message; }
+
+// Hardware drawn from a profile when no real IKEA model fits: the same shapes as templates.js,
+// in millimetres, tip at the origin, +Z toward the head.
+function profileGeometry(kind) {
+  const L = kind === 'dowel' ? 30 : kind === 'cam_nut' ? 12 : 40, r = kind === 'dowel' ? 4 : kind === 'cam_nut' ? 7.5 : 2;
+  let points;
+  if (kind === 'dowel') { const c = Math.min(r*.3,1.5); points = [[0,0],[r-c,0],[r,c],[r,L-c],[r-c,L],[0,L]]; }
+  else if (kind === 'cam_nut') points = [[0,0],[r,0],[r,L],[0,L]];
+  else { const R = r*1.9, hh = Math.max(2,r*1.2); points = [[0,0],[r*.45,0],[r,Math.min(r*1.4,L*.3)],[r,L],[R,L],[R,L+hh],[0,L+hh]]; }
+  const geometry = new THREE.LatheGeometry(points.map(([x,y]) => new THREE.Vector2(x,y)),32);
+  geometry.rotateX(Math.PI/2);
+  return {geometry,length:L,width:kind === 'dowel' ? 2*r : kind === 'cam_nut' ? 2*r : 3.8*r};
+}
+
+// A real IKEA screw, dowel or cam lock taken from a kit whose model includes it.
+function libraryGeometry(number) {
+  if (!hardwareMeshes.has(number)) {
+    hardwareMeshes.set(number,fetch('/api/kits/hardware/' + encodeURIComponent(number)).then(response => {
+      if (!response.ok) throw new Error('No hardware model ' + number);
+      return response.json();
+    }).then(data => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position',new THREE.Float32BufferAttribute(data.positions,3));
+      geometry.setIndex(data.indices);
+      geometry.computeVertexNormals();
+      return {geometry,length:data.length_mm,width:data.width_mm};
+    }));
+  }
+  return hardwareMeshes.get(number);
+}
+
+function clearHardware() {
+  for (const id of extras) {
+    const part = parts?.get(id);
+    if (!part) continue;
+    part.object.removeFromParent();
+    part.object.children[0]?.material?.dispose();
+    parts.delete(id);
+  }
+  extras = [];
+}
+
+// Adds the screws, dowels and cam locks the server placed at joints the model leaves bare. They get
+// a faint blue glow, since their positions are estimates.
+async function addHardware(specs) {
+  clearHardware();
+  for (const [id,spec] of Object.entries(specs ?? {})) {
+    const {geometry,length,width} = spec.number
+      ? await libraryGeometry(spec.number).catch(() => profileGeometry(spec.kind))
+      : profileGeometry(spec.kind);
+    const look = HARDWARE_LOOK[spec.kind] ?? HARDWARE_LOOK.screw;
+    const mesh = new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({...look,emissive:0x2a6f97,emissiveIntensity:.12}));
+    // keep the real part's proportions, but never fatter than the parts it joins allow
+    const along = spec.length/length;
+    const across = Math.min(along,(spec.width ?? Infinity)/width);
+    mesh.scale.set(across,across,along);
+    const holder = new THREE.Group();
+    holder.add(mesh);
+    holder.position.fromArray(spec.position);
+    holder.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(...spec.direction));
+    model.add(holder);
+    holder.updateMatrixWorld(true);
+    parts.set(id,{
+      object:holder, position:holder.position.clone(), rotation:holder.quaternion.clone(),
+      localAxis:new THREE.Vector3(0,0,1), slender:true, length:spec.length, centered:false,
+      worldPosition:holder.getWorldPosition(new THREE.Vector3()), worldRotation:holder.getWorldQuaternion(new THREE.Quaternion())
+    });
+    extras.push(id);
+  }
+}
+
+// A point `t` (0..1) of the way along a list of offsets, by distance travelled. The server sends a
+// two-leg path when a part has to lift out of its joint before it can move away without hitting anything.
+function alongPath(points, t) {
+  const vectors = points.map(point => new THREE.Vector3(...point));
+  const lengths = vectors.slice(1).map((vector,i) => vector.distanceTo(vectors[i]));
+  let remaining = t*(lengths.reduce((a,b) => a+b,0) || 1);
+  for (let i = 0; i < lengths.length; i++) {
+    if (remaining <= lengths[i] || i === lengths.length-1) {
+      return vectors[i].clone().lerp(vectors[i+1],lengths[i] ? Math.min(1,remaining/lengths[i]) : 1);
+    }
+    remaining -= lengths[i];
+  }
+  return vectors.at(-1);
+}
 
 function updateControls() {
   const locked = busy || recording;
@@ -116,6 +208,7 @@ async function load(item) {
   }
   model = asset.scene;
   parts = mapped;
+  extras = [];
   kit = item;
   actions = [];
   if (sourceUrl) URL.revokeObjectURL(sourceUrl);
@@ -177,6 +270,17 @@ function tick(now) {
   const action = actions[step];
   const previous = new Set(actions.slice(0,step).flatMap(item => item.nodes));
   const active = new Set(action?.nodes);
+  const savedOffsets = new Map();
+  for (const earlier of actions.slice(0,step)) {
+    for (const id of earlier.nodes) {
+      const end = earlier.motions?.[id]?.end ?? earlier.end_offset;
+      if (end) savedOffsets.set(id,end);
+    }
+  }
+  // Per-part motions come from the server (worked out from the finished model); a saved plan may
+  // instead carry one hand-entered offset for the whole action.
+  const keyed = Boolean(action?.motions || action?.start_offset);
+  const eased = 1-(1-progress)**2;
   const predictedStep = prediction?.steps.findIndex(item => item.step === action?.step) ?? -1;
   const compared = prediction ? posesThrough(predictedStep) : new Map();
   const usePrediction = $('use-pa').checked && prediction && action;
@@ -195,7 +299,29 @@ function tick(now) {
     const pose = playback.get(id);
     if (pose) setWorldPose(object,pose);
     const isFastener = slender && ['insert','tighten'].includes(action?.motion);
-    if (active.has(id) && !previous.has(id)) {
+    if (keyed) {
+      const move = action.motions?.[id]
+        ?? (action.start_offset && {start:action.start_offset,end:action.end_offset,turns:action.turns});
+      const offset = active.has(id) && move
+        ? (move.path ? alongPath(move.path,eased) : new THREE.Vector3(...move.start).lerp(new THREE.Vector3(...move.end),eased))
+        : new THREE.Vector3(...(savedOffsets.get(id) ?? [0,0,0]));
+      const world = object.getWorldPosition(new THREE.Vector3()).add(offset);
+      object.position.copy(object.parent.worldToLocal(world));
+      if (active.has(id) && move?.turns) {
+        object.rotateOnAxis(localAxis,(progress-1)*Math.PI*2*move.turns);
+      }
+    } else if (active.has(id) && action.entry_target !== undefined) {
+      const target = parts.get(action.entry_target).worldPosition;
+      const direction = part.worldPosition.clone().sub(target);
+      if (action.motion === 'tighten') {
+        const shaft = localAxis.clone().applyQuaternion(object.getWorldQuaternion(new THREE.Quaternion()));
+        direction.copy(shaft.multiplyScalar(direction.dot(shaft) < 0 ? -1 : 1));
+        object.rotateOnAxis(localAxis,(progress-1)*Math.PI*3);
+      }
+      const distance = THREE.MathUtils.lerp(action.distance,action.seat_offset ?? 0,progress);
+      const position = object.getWorldPosition(new THREE.Vector3()).addScaledVector(direction.normalize(),distance);
+      object.position.copy(object.parent.worldToLocal(position));
+    } else if (active.has(id) && !previous.has(id)) {
       const world = object.getWorldPosition(new THREE.Vector3());
       const direction = new THREE.Vector3(0,1,0);
       if (isFastener) {
@@ -212,7 +338,7 @@ function tick(now) {
       world.addScaledVector(direction,distance*(1-progress)**2);
       object.position.copy(object.parent.worldToLocal(world));
     }
-    if (active.has(id) && action.motion === 'tighten' && isFastener) {
+    if (active.has(id) && action.motion === 'tighten' && isFastener && action.entry_target === undefined && !keyed) {
       object.rotateOnAxis(localAxis,(progress-1)*Math.PI*2);
     }
   }
@@ -250,6 +376,7 @@ $('scan').onsubmit = event => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail);
     await load(result.kit);
+    await addHardware(result.plan.hardware);
     if (sourceUrl) URL.revokeObjectURL(sourceUrl);
     sourceUrl = URL.createObjectURL(file);
     referenceSource = false;
@@ -370,7 +497,8 @@ perform(async () => {
   const selected = catalog.find(item => item.article_number === requested);
   await load(selected || catalog[0]);
   if (selected) {
-    const response = await fetch('/api/kits/' + encodeURIComponent(selected.article_number) + '/reference-plan');
+    const auto = new URLSearchParams(location.search).has('auto');
+    const response = await fetch('/api/kits/' + encodeURIComponent(selected.article_number) + '/reference-plan' + (auto ? '?auto=true' : ''));
     if (response.ok) {
       const result = await response.json();
       actions = result.plan.actions;
@@ -381,7 +509,9 @@ perform(async () => {
       $('issues').textContent = result.plan.unresolved.join('\n');
       $('issues').hidden = !result.plan.unresolved.length;
       showStep(0);
-      status('Using dataset assembly annotations. Step numbers are dataset stages; compare the displayed manual. Motion is illustrative.');
+      if (selected.checked_plan && auto) status('Saved BEKVÄM steps with motion computed from the 3D model.');
+      else if (selected.checked_plan) status('Saved BEKVÄM walkthrough with individual rail, dowel, and screw actions.');
+      else status('Using dataset assembly annotations. Step numbers are dataset stages; compare the displayed manual. Motion is illustrative.');
     } else if (response.status === 404) {
       status('Model loaded. Upload the matching PDF to generate steps with Gemini.');
     } else throw new Error('Could not load the annotated steps for this model.');

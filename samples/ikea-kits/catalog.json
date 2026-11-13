@@ -5,6 +5,7 @@
     "manual_id": "AA-444158-9",
     "model": "30178884/model.glb",
     "manual": "30178884/manual.pdf",
+    "checked_plan": "30178884/checked-plan.json",
     "mesh_nodes": 21,
     "source_url": "https://github.com/IKEA/IKEA3DAssemblyDataset",
     "model_license": "CC BY-NC-SA 4.0"
