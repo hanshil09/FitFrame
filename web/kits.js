@@ -19,7 +19,7 @@ const controls = new OrbitControls(camera,views[0].renderer.domElement);
 const loader = new GLTFLoader();
 const assemblyCenter = new THREE.Vector3();
 let catalog, kit, model, parts, prediction, actions = [], step = 0, started = 0;
-let busy = false, playing = false, recording = false, recordFrame, travel, sourceUrl;
+let busy = false, playing = false, recording = false, recordFrame, travel, sourceUrl, referenceSource = false;
 const interval = 1700;
 
 function status(message) { $('status').textContent = message; }
@@ -43,8 +43,13 @@ function showStep(index) {
   $('step').textContent = action ? 'Step ' + action.step + ' · ' + action.caption : 'Finished IKEA model';
   $('source').hidden = !action;
   if (action) {
-    const url = sourceUrl + '#page=' + action.page;
-    if ($('page').src !== url) $('page').src = url;
+    $('page-image').hidden = !referenceSource;
+    $('page').hidden = referenceSource;
+    if (referenceSource) $('page-image').src = '/api/kits/' + encodeURIComponent(kit.article_number) + '/pages/' + action.page;
+    else {
+      const url = sourceUrl + '#page=' + action.page;
+      if ($('page').src !== url) $('page').src = url;
+    }
   }
   if (prediction) {
     const predicted = prediction.steps.find(item => item.step === action?.step);
@@ -247,6 +252,7 @@ $('scan').onsubmit = event => {
     await load(result.kit);
     if (sourceUrl) URL.revokeObjectURL(sourceUrl);
     sourceUrl = URL.createObjectURL(file);
+    referenceSource = false;
     actions = result.plan.actions;
     $('review').checked = false;
     $('issues').textContent = result.plan.unresolved.join('\n');
@@ -360,6 +366,24 @@ perform(async () => {
   if (!response.ok) throw new Error('Could not load the kit catalog.');
   catalog = await response.json();
   for (const item of catalog) $('kit').add(new Option(item.name+' · '+item.article_number,item.article_number));
-  await load(catalog[0]);
-  status('Kit loaded. Upload the matching PDF to generate steps.');
+  const requested = new URLSearchParams(location.search).get('kit');
+  const selected = catalog.find(item => item.article_number === requested);
+  await load(selected || catalog[0]);
+  if (selected) {
+    const response = await fetch('/api/kits/' + encodeURIComponent(selected.article_number) + '/reference-plan');
+    if (response.ok) {
+      const result = await response.json();
+      actions = result.plan.actions;
+      const manual = await fetch('/api/kits/' + encodeURIComponent(selected.article_number) + '/manual');
+      if (!manual.ok) throw new Error('Could not load the matching manual.');
+      sourceUrl = URL.createObjectURL(await manual.blob());
+      referenceSource = true;
+      $('issues').textContent = result.plan.unresolved.join('\n');
+      $('issues').hidden = !result.plan.unresolved.length;
+      showStep(0);
+      status('Using dataset assembly annotations. Step numbers are dataset stages; compare the displayed manual. Motion is illustrative.');
+    } else if (response.status === 404) {
+      status('Model loaded. Upload the matching PDF to generate steps with Gemini.');
+    } else throw new Error('Could not load the annotated steps for this model.');
+  } else status('Kit loaded. Upload the matching PDF to generate steps.');
 });

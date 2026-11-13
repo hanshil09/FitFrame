@@ -7,7 +7,7 @@ import traceback
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from pipeline import prepare_pages
@@ -61,6 +61,51 @@ def normalize(value):
 @router.get("")
 def list_kits():
     return catalog()
+
+
+@router.post("/match")
+def match_manual(file: UploadFile = File(...)):
+    data = file.file.read(LIMIT + 1)
+    if len(data) > LIMIT or not data.startswith(b"%PDF-"):
+        return {"article_number": None}
+    digest = hashlib.sha256(data).digest()
+    kit = next((item for item in catalog() if hashlib.sha256((ROOT / item["manual"]).read_bytes()).digest() == digest), None)
+    return {"article_number": kit["article_number"] if kit else None}
+
+
+@router.get("/{article}/reference-plan")
+def reference_plan(article: str):
+    kit = get_kit(article)
+    if not kit.get("reference_steps"):
+        raise HTTPException(404, "No annotated steps are available for this model.")
+    nodes = mesh_nodes(kit)
+    steps = json.loads((ROOT / kit["reference_steps"]).read_text())["steps"]
+    seen, actions = set(), []
+    for entry in steps:
+        parts = {int(part) for group in entry["parts"] for part in group.split(",")}
+        if not parts <= nodes.keys():
+            raise HTTPException(422, "Annotations do not match the model.")
+        new = sorted(parts - seen)
+        seen.update(parts)
+        actions.append({"step": str(entry["step"]), "page": entry["page"],
+                        "caption": "Assemble the highlighted pieces", "nodes": new, "motion": "place"})
+    missing = sorted(nodes.keys() - seen)
+    return {"kit": kit, "plan": {"actions": actions, "unresolved":
+            (["Model pieces absent from the annotations: " + ", ".join(nodes[i] for i in missing)] if missing else [])}}
+
+
+@router.get("/{article}/pages/{page}")
+def manual_page(article: str, page: int):
+    import io
+    import pypdfium2 as pdfium
+    kit = get_kit(article)
+    pdf = pdfium.PdfDocument(str(ROOT / kit["manual"]))
+    if page < 1 or page > len(pdf):
+        raise HTTPException(404, "Manual page not found.")
+    image = pdf[page - 1].render(scale=1.5).to_pil()
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return Response(buffer.getvalue(), media_type="image/png")
 
 
 @router.get("/{article}/{asset}")

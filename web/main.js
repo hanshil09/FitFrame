@@ -21,6 +21,19 @@ $('files').onchange = () => {
   $('go').disabled = !n;
 };
 $('go').onclick = async () => {
+  if ($('files').files.length === 1) {
+    const match = new FormData();
+    match.append('file', $('files').files[0]);
+    try {
+      const response = await fetch('/api/kits/match', { method: 'POST', body: match });
+      if (!response.ok) throw new Error('Could not check the kit catalog.');
+      const result = await response.json();
+      if (result.article_number) {
+        location.href = `/kits.html?kit=${encodeURIComponent(result.article_number)}`;
+        return;
+      }
+    } catch (error) { $('scanErr').textContent = error.message; return; }
+  }
   const fd = new FormData();
   for (const f of $('files').files) fd.append('files', f);
   startJob(fetch(`/api/jobs?fresh=${$('fresh').checked}`, { method: 'POST', body: fd }));
