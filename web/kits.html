@@ -1,19 +1,80 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IKEA assembly kits</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f1ec">
+<title>IKEA assembly kits</title>
+<link rel="stylesheet" href="./ui.css">
 <style>
-*{box-sizing:border-box}body{font:15px/1.45 -apple-system,system-ui,sans-serif;background:#f4f1ec;color:#22201c;margin:0;overflow:hidden}button,input,select{font:inherit}button{border:1px solid #ddd8cf;background:#faf8f5;border-radius:8px;padding:7px 10px;cursor:pointer}button:disabled{opacity:.5}.view#left{position:absolute;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}.card,.bar,.source{position:absolute;background:#fff;border:1px solid #ddd8cf;border-radius:12px;padding:12px}.card{top:12px;left:12px;width:min(400px,calc(100vw - 24px));max-height:55vh;overflow:auto}.card p{margin:6px 0}.card details{margin-top:8px;border-top:1px solid #ddd8cf;padding-top:6px}summary{cursor:pointer;color:#6b675f}.source{top:12px;right:12px;width:min(360px,36vw);height:50vh;padding:6px}.source iframe{width:100%;height:100%;border:0}.bar{left:12px;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.bar label{font-size:13px;color:#6b675f}.title{font-size:17px;font-weight:600}.muted{font-size:12px;color:#6b675f}#issues{color:#a32d2d;white-space:pre-line}#comparison-panel{display:none}@media(max-width:640px){.source{top:auto;bottom:100px;width:42vw;height:30vh}.card{max-height:42vh}.bar{padding:6px}}
-</style><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
-<style>.source img{width:100%;height:100%;object-fit:contain}</style>
-<div id="left" class="view"></div>
-<section class="card"><p id="step" class="title">Finished model</p><p id="status" class="muted" role="status">Loading kits…</p><p id="issues" hidden></p>
-<details><summary>Choose a kit or manual</summary><p><a href="/">New scan</a></p><label>Kit <select id="kit"></select></label> <a id="manual" target="_blank" rel="noopener">Matching PDF</a>
-<form id="scan"><label>Assembly PDF <input id="pdf" type="file" accept="application/pdf" required></label><button>Read with Gemini</button></form>
-</details></section>
-<section id="comparison-panel"><div id="right" class="view" hidden></div><p id="comparison">No Manual-PA run available.</p>
+html, body { overflow: hidden }
+#left { position: absolute; inset: 0 }
+#left canvas { display: block; width: 100%; height: 100%; touch-action: none }
+.player-card .step-title { margin-top: 0 }
+#issues { color: var(--bad); white-space: pre-line; font-size: 12px; background: var(--bad-soft); border-radius: 8px; padding: 6px 8px; margin: 8px 0 0 }
+.chooser { display: grid; gap: 10px; padding: 6px 0 4px }
+.chooser label { display: grid; gap: 4px; font-size: 12px; color: var(--muted) }
+.chooser select, .chooser input[type=file] { width: 100%; min-height: 38px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: 14px; color: var(--text) }
+.chooser form { display: grid; gap: 8px }
+.chooser .row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px }
+.page-thumb.manual { height: min(46vh, 420px); display: flex }
+.page-thumb.manual img, .page-thumb.manual iframe { width: 100%; height: 100%; border: 0; border-radius: 8px; object-fit: contain; background: #fff }
+.controls .export { display: flex; align-items: center; gap: 8px; margin-left: auto }
+.controls .btn { min-height: 40px; padding: 0 14px; font-size: 14px }
+/* Rendered page images keep their own shape; only the PDF viewer needs a fixed height */
+.page-thumb.manual:has(> img:not([hidden])) { height: auto; width: min(440px, 42vw) }
+.page-thumb.manual img { height: auto; max-height: 46vh }
+#comparison-panel { display: none }
+@media (max-width: 640px) {
+  .page-thumb.manual { height: 28vh; width: 44vw }
+  .page-thumb.manual:has(> img:not([hidden])) { width: 72vw }
+  .page-thumb.manual img { max-height: 30vh }
+  .controls .export { margin-left: 0; flex-basis: 100%; justify-content: space-between }
+}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="left"></div>
+
+<section class="player-card glass">
+  <p id="step" class="step-title">Finished model</p>
+  <p id="status" class="muted" role="status" style="margin:4px 0 0">Loading kits…</p>
+  <p id="issues" hidden></p>
+  <details><summary>Change furniture or manual</summary>
+    <div class="chooser">
+      <label>Furniture <select id="kit"></select></label>
+      <form id="scan">
+        <label>Read a manual with the model <input id="pdf" type="file" accept="application/pdf" required></label>
+        <button class="btn secondary">Read manual</button>
+      </form>
+      <div class="row"><a id="manual" target="_blank" rel="noopener">Open the manual PDF</a><a href="/">Scan a new manual</a></div>
+    </div>
+  </details>
+</section>
+
+<section id="comparison-panel"><div id="right" hidden></div><p id="comparison">No Manual-PA run available.</p>
 <p><label><input id="use-pa" type="checkbox" disabled> Use imported poses in playback and export</label></p>
 <label>Import prediction <input id="prediction" type="file" accept=".json"></label>
 <details><summary>Prediction format</summary><p>Export GLB node indices and predicted world poses in meters, using the IKEA kit coordinate frame. Use one entry per printed step and list the parts newly placed in that step.</p>
 <pre>{"article_number":"30178884","steps":[{"step":"1","poses":[{"node":1,"position":[0,0,0],"quaternion":[0,0,0,1]}]}]}</pre></details></section>
-<section class="bar"><a href="/">New</a><button id="prev" disabled>◀</button><button id="play" disabled>Play all</button><button id="next" disabled>▶</button>
-<label><input id="review" type="checkbox" disabled> I checked the steps against the manual</label><button id="export" disabled>Export video</button></section>
-<section class="source" id="source" hidden><img id="page-image" alt="Assembly manual page" hidden><iframe id="page" title="Source assembly manual"></iframe></section>
-<script type="module" src="./kits.js"></script></html>
+
+<div class="dock">
+  <section class="page-thumb manual glass" id="source" hidden><img id="page-image" alt="Assembly manual page" hidden><iframe id="page" title="Source assembly manual"></iframe></section>
+  <section class="controls glass">
+    <div class="group">
+      <a class="icon-btn" href="/" aria-label="Home" title="Home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+      <span class="sep"></span>
+      <button class="icon-btn" id="prev" disabled aria-label="Previous step" title="Previous step"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="pill-btn" id="play" disabled>Play all</button>
+      <button class="icon-btn" id="next" disabled aria-label="Next step" title="Next step"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+    <div class="export">
+      <label class="chip"><input id="review" type="checkbox" disabled>Checked against the manual</label>
+      <button class="btn secondary" id="export" disabled>Export video</button>
+    </div>
+  </section>
+</div>
+<script type="module" src="./kits.js"></script>
+</body>
+</html>

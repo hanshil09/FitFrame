@@ -12,12 +12,18 @@ const show = id => document.querySelectorAll('.screen').forEach(s => s.classList
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ===================== Scan + progress =====================
-fetch('/api/health').then(r => r.json()).then(h => { $('health').textContent = `Model: ${h.provider} / ${h.model}`; }).catch(() => {
+fetch('/api/health').then(r => r.json()).then(h => {
+  $('health').textContent = `Ready · ${h.model}`;
+  $('health').classList.add('ok');
+}).catch(() => {
   $('health').textContent = 'Server not reachable';
+  $('health').classList.add('bad');
 });
 $('files').onchange = () => {
   const n = $('files').files.length;
-  $('fileLabel').textContent = n ? `${n} file${n > 1 ? 's' : ''} selected` : 'Tap to choose a PDF or take photos';
+  $('fileLabel').textContent = !n ? 'Choose a PDF or take photos' : n === 1 ? $('files').files[0].name : `${n} pages selected`;
+  $('fileHint').textContent = n ? 'Tap to choose different files' : 'or drop it here · parts list first, then the steps in order';
+  $('drop').classList.toggle('has', n > 0);
   $('go').disabled = !n;
 };
 $('go').onclick = async () => {
@@ -56,17 +62,17 @@ async function startJob(req) {
 async function watchJob(id) {
   show('progress');
   $('progErr').textContent = '';
-  $('spin').style.display = '';
+  $('spin').style.display = $('progBar').style.display = '';
   $('progTitle').textContent = 'Reading the manual…';
   for (;;) {
     let job;
     try { job = await (await fetch(`/api/jobs/${id}`)).json(); }
     catch { await sleep(1500); continue; }
-    if (job.detail) { $('progErr').textContent = 'This scan is no longer on the server.'; $('spin').style.display = 'none'; return; }
+    if (job.detail) { $('progErr').textContent = 'This scan is no longer on the server.'; $('spin').style.display = $('progBar').style.display = 'none'; return; }
     $('log').innerHTML = job.log.map(l => `<div>${l.t.toFixed(1).padStart(5)}s  ${esc(l.msg)}</div>`).join('');
     if (job.status === 'done') { startPlayer(job.plan, id); return; }
     if (job.status === 'error') {
-      $('spin').style.display = 'none';
+      $('spin').style.display = $('progBar').style.display = 'none';
       $('progTitle').textContent = 'Could not read the manual';
       $('progErr').textContent = job.error;
       return;

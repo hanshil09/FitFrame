@@ -6,7 +6,7 @@ const $ = id => document.getElementById(id);
 const camera = new THREE.PerspectiveCamera(40,1,.001,100);
 const views = ['left','right'].map(id => {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xeaf0e9);
+  scene.background = new THREE.Color(0xefebe4);
   scene.add(new THREE.HemisphereLight(0xffffff,0x717971,2));
   const light = new THREE.DirectionalLight(0xffffff,2);
   light.position.set(2,4,3);

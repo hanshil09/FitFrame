@@ -4,111 +4,207 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f4f1ec">
 <title>Assembly scanner</title>
+<link rel="stylesheet" href="./ui.css">
 <style>
-:root{--bg:#f4f1ec;--panel:#fff;--text:#22201c;--muted:#6b675f;--accent:#d9822b;--border:#ddd8cf}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,system-ui,sans-serif;overflow:hidden}
-.screen{position:absolute;inset:0;display:none}
-.screen.on{display:block}
-.center{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 32px) 16px 32px;height:100%;overflow:auto}
-h1{font-size:22px;font-weight:600;margin:0 0 6px}
-h2{font-size:16px;font-weight:600;margin:4px 0 6px}
-p{margin:0 0 14px;color:var(--muted)}
-.box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
-.btn{display:block;width:100%;font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px;margin-top:10px;cursor:pointer;background:var(--accent);color:#fff}
-.btn.secondary{background:#efebe4;color:var(--text)}
-.btn:disabled{opacity:.5}
-.file{display:block;border:2px dashed var(--border);border-radius:12px;padding:22px;text-align:center;color:var(--muted);cursor:pointer}
-.file input{display:none}
-.row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px;margin-top:10px}
-.log{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;color:var(--muted)}
-.log div{padding:2px 0}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:s 0.8s linear infinite;vertical-align:-2px;margin-right:6px}
-@keyframes s{to{transform:rotate(360deg)}}
-.err{color:#a32d2d;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+html, body { overflow: hidden }
+.screen { position: absolute; inset: 0; display: none }
+.screen.on { display: block }
+.page { height: 100%; overflow: auto; -webkit-overflow-scrolling: touch }
+.wrap { max-width: 980px; margin: 0 auto; padding: calc(var(--top) + 18px) 16px calc(var(--bottom) + 40px) }
 
-#c{display:block;width:100vw;height:100vh;touch-action:none}
-.card{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;width:min(400px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;max-height:calc(100vh - 150px);overflow:auto}
-.k{font-size:12px;color:var(--muted)}
-.title{font-size:16px;font-weight:600;margin:3px 0 4px}
-.mate{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);word-break:break-word}
-.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.tag{font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap}
-.stated{background:#eef3e6;color:#3b6d11}.derived{background:#e6f1fb;color:#0c447c}.estimated{background:#faeeda;color:#854f0b}.user{background:#eeedfe;color:#3c3489}.warn{background:#fcebeb;color:#a32d2d}
-details{margin-top:8px;border-top:1px solid var(--border);padding-top:6px}
-summary{cursor:pointer;font-size:13px;color:var(--muted)}
-.part{margin:6px 0;font-size:13px}
-.part b{font-weight:600}
-.dims{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
-.issue{font-size:12px;color:#a32d2d;margin:3px 0}
-.src{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:12px;width:min(260px,36vw);background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px}
-.src canvas{width:100%;display:block;border-radius:6px}
-.bar{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;flex-wrap:wrap}
-.bar button{font:inherit;font-size:14px;border:1px solid var(--border);background:#faf8f5;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--text)}
-.bar input[type=range]{flex:1;min-width:120px}
-.bar label{display:flex;gap:5px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
-.dots{display:flex;gap:3px;flex-wrap:wrap;max-width:140px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--border)}
-.dot.on{background:var(--accent)}
-@media (max-width:640px){.src{top:auto;bottom:calc(env(safe-area-inset-bottom) + 120px);width:40vw}.card{max-height:42vh}}
+/* Scan screen */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 28px }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px }
+.mark { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); display: grid; place-items: center }
+.mark svg { width: 19px; height: 19px; fill: none; stroke: #fff; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round }
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 28px; align-items: start }
+.hero h1 { font-size: clamp(26px, 4.4vw, 38px); line-height: 1.12; letter-spacing: -.02em; margin: 6px 0 12px }
+.lead { color: var(--muted); font-size: 16px; margin: 0 0 22px; max-width: 30em }
+.how { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px }
+.how li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start }
+.how .n { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border);
+  display: grid; place-items: center; font-weight: 650; font-size: 14px; color: var(--accent-strong) }
+.how b { display: block; font-weight: 600 }
+.how span { color: var(--muted); font-size: 14px }
+.upload { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; box-shadow: var(--shadow) }
+.drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  min-height: 168px; padding: 20px; border: 2px dashed #d8d1c5; border-radius: 14px; background: var(--surface-2);
+  cursor: pointer; transition: border-color .15s, background .15s }
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft) }
+.drop.has { border-style: solid; border-color: #efcfa6; background: var(--accent-soft) }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0 }
+.drop .ic { width: 46px; height: 46px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border);
+  display: grid; place-items: center; margin-bottom: 4px; color: var(--accent-strong) }
+.drop .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
+.drop strong { font-size: 15px }
+.drop small { color: var(--muted); font-size: 13px }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+.upload .btn { margin-top: 12px }
+.or { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; margin: 12px 0 0 }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--border) }
+.options { margin-top: 10px }
+.options label { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); padding: 6px 0 2px; cursor: pointer }
+.err { color: var(--bad); white-space: pre-wrap; font-size: 13px }
+.err:not(:empty) { margin-top: 10px; background: var(--bad-soft); padding: 8px 10px; border-radius: 8px }
+
+.section-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 44px 0 14px; flex-wrap: wrap }
+.section-head h2 { font-size: 19px; margin: 0 0 2px; letter-spacing: -.01em }
+.section-head p { margin: 0; color: var(--muted); font-size: 14px }
+.search { height: 40px; width: min(260px, 100%); padding: 0 12px 0 34px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a958b' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 10px 50%/16px no-repeat }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px }
+.filters button { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+  font-size: 13px; color: var(--muted); cursor: pointer }
+.filters button[aria-pressed=true] { background: var(--text); border-color: var(--text); color: #fff }
+.kits { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px }
+.kit { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; background: var(--surface);
+  border: 1px solid var(--border); text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s, box-shadow .15s }
+.kit:hover { border-color: #e8c9a3; box-shadow: var(--shadow); transform: translateY(-1px) }
+.kit .art { height: 74px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; color: #b3a995 }
+.kit .art svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round }
+.kit b { font-size: 14px; font-weight: 600; line-height: 1.25 }
+.kit .meta { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted) }
+.kit .src { color: var(--faint) }
+.empty { color: var(--muted); font-size: 14px; padding: 18px 0 }
+
+/* Progress screen */
+.progress-wrap { max-width: 560px; margin: 0 auto; padding: calc(var(--top) + 48px) 16px 40px }
+.progress-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: var(--shadow) }
+.progress-card h1 { font-size: 21px; margin: 0 0 6px; display: flex; align-items: center; gap: 10px }
+.progress-card > p { margin: 0 0 16px; color: var(--muted) }
+.spin { width: 18px; height: 18px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: s .8s linear infinite; flex: none }
+@keyframes s { to { transform: rotate(360deg) } }
+.bar-track { height: 4px; border-radius: 4px; background: var(--sunken); overflow: hidden; margin-bottom: 16px }
+.bar-track i { display: block; height: 100%; width: 35%; background: var(--accent); border-radius: 4px; animation: slide 1.6s ease-in-out infinite }
+@keyframes slide { 0% { transform: translateX(-100%) } 100% { transform: translateX(290%) } }
+.log { font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; max-height: 46vh; overflow: auto; white-space: pre-wrap }
+.log:empty::before { content: "Uploading…" }
+.progress-card .btn { margin-top: 16px }
+
+/* Player */
+#c { display: block; width: 100vw; height: 100vh; touch-action: none }
+.k { font-size: 12px; color: var(--muted) }
+.mate { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); word-break: break-word; margin-top: 4px }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px }
+.badges:empty { display: none }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; white-space: nowrap }
+.stated { background: var(--ok-soft); color: var(--ok) } .derived { background: #e6f1fb; color: #0c447c }
+.estimated { background: #faeeda; color: #854f0b } .user { background: #eeedfe; color: #3c3489 } .warn { background: var(--bad-soft); color: var(--bad) }
+.player-card details { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 4px }
+.part { margin: 6px 0; font-size: 13px }
+.part b { font-weight: 600 }
+.dims { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px }
+.issue { font-size: 12px; color: var(--bad); margin: 4px 0 }
+.dots { display: flex; gap: 3px; flex-wrap: wrap; max-width: 150px }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border) }
+.dot.on { background: var(--accent) }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; gap: 22px }
+  .how { grid-template-columns: repeat(3, 1fr); gap: 8px }
+  .how li { grid-template-columns: 1fr; gap: 6px; align-content: start }
+  .how span { font-size: 12px }
+  .section-head { margin-top: 32px }
+  .kits { grid-template-columns: repeat(2, 1fr) }
+  .dots { display: none }
+}
 </style>
 </head>
 <body>
-<p style="margin:16px auto;max-width:960px;padding:0 16px"><a href="/kits.html">Open IKEA kits and Manual-PA comparison</a></p>
 
 <section class="screen on" id="scan">
-  <div class="center">
-    <h1>Scan an assembly manual</h1>
-    <p>Add the manual as a PDF or photos of its pages (parts list first, then the steps in order). The server reads the pages and builds a 3D walkthrough.</p>
-    <div class="box">
-      <label class="file" id="drop">
-        <input type="file" id="files" accept="application/pdf,image/*" multiple>
-        <span id="fileLabel">Tap to choose a PDF or take photos</span>
-      </label>
-      <button class="btn" id="go" disabled>Read manual</button>
-      <button class="btn secondary" id="sample">Try the sample chair manual</button>
-      <label class="row"><input type="checkbox" id="fresh"> Re-read with the model (ignore the saved result)</label>
-      <div class="err" id="scanErr"></div>
+  <div class="page"><div class="wrap">
+    <header class="topbar">
+      <div class="brand"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg></span>Assembly</div>
+      <span class="status-pill" id="health">Connecting…</span>
+    </header>
+
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Flat-pack manual → 3D walkthrough</div>
+        <h1>See every step before you pick up a screwdriver.</h1>
+        <p class="lead">Scan a furniture manual and watch each step play out in 3D, with the matching page from the manual beside it.</p>
+        <ol class="how">
+          <li><span class="n">1</span><div><b>Scan</b><span>Upload the PDF or photograph each page.</span></div></li>
+          <li><span class="n">2</span><div><b>Read</b><span>The model finds the parts and steps.</span></div></li>
+          <li><span class="n">3</span><div><b>Watch</b><span>Each step animates in 3D.</span></div></li>
+        </ol>
+      </div>
+
+      <div class="upload">
+        <label class="drop" id="drop">
+          <input type="file" id="files" accept="application/pdf,image/*" multiple>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+          <strong id="fileLabel">Choose a PDF or take photos</strong>
+          <small id="fileHint">or drop it here · parts list first, then the steps in order</small>
+        </label>
+        <button class="btn block" id="go" disabled>Read manual</button>
+        <div class="or">or</div>
+        <button class="btn secondary block" id="sample">Try the sample office chair</button>
+        <details class="options"><summary>Options</summary>
+          <label><input type="checkbox" id="fresh"> Read again with the model instead of using a saved result</label>
+        </details>
+        <div class="err" id="scanErr" role="alert"></div>
+      </div>
     </div>
-    <p class="k" id="health"></p>
-  </div>
+
+    <div class="section-head">
+      <div><h2>Furniture with real 3D models</h2><p>Open one directly, or scan its manual and it is matched automatically.</p></div>
+      <input class="search" id="kitSearch" type="search" placeholder="Search furniture" aria-label="Search furniture">
+    </div>
+    <div class="filters" id="kitFilters" role="group" aria-label="Filter by type"></div>
+    <div class="kits" id="kitGrid"><div class="empty">Loading…</div></div>
+  </div></div>
 </section>
 
 <section class="screen" id="progress">
-  <div class="center">
-    <h1><span class="spin" id="spin"></span><span id="progTitle">Reading the manual…</span></h1>
-    <p>Pages are classified, the parts list is read, then each step is read three times and the answers are voted on.</p>
-    <div class="box log" id="log"></div>
-    <div class="err" id="progErr"></div>
-    <button class="btn secondary" id="back1">Back</button>
-  </div>
+  <div class="page"><div class="progress-wrap">
+    <div class="progress-card">
+      <h1><span class="spin" id="spin"></span><span id="progTitle">Reading the manual…</span></h1>
+      <p>The pages are sorted, the parts list is read, then every step page. This usually takes one to three minutes.</p>
+      <div class="bar-track" id="progBar"><i></i></div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="err" id="progErr" role="alert"></div>
+      <button class="btn secondary block" id="back1">Back</button>
+    </div>
+  </div></div>
 </section>
 
 <section class="screen" id="player">
   <canvas id="c"></canvas>
-  <div class="card">
-    <div class="k" id="stepNo">Building geometry…</div>
-    <div class="title" id="title"></div>
-    <div class="mate" id="mate"></div>
-    <div class="badges" id="badges"></div>
+  <div class="player-card glass">
+    <div class="eyebrow" id="stepNo">Building geometry…</div>
+    <div class="step-title" id="title"></div>
     <div id="stepIssues"></div>
+    <details><summary>Mate and confidence</summary><div class="mate" id="mate"></div><div class="badges" id="badges"></div></details>
     <details id="partsBox"><summary id="partsSummary">Parts</summary><div id="parts"></div></details>
     <details id="issuesBox"><summary id="issuesSummary">Checks</summary><div id="issues"></div></details>
     <div class="k" id="status" style="margin-top:6px"></div>
   </div>
-  <div class="src" id="src"><canvas id="srcCanvas"></canvas><div class="k" id="srcLabel" style="margin-top:3px"></div></div>
-  <div class="bar">
-    <button id="newScan">New</button>
-    <button id="prev">◀</button>
-    <button id="play">Pause</button>
-    <button id="next">▶</button>
-    <button id="replay">↺</button>
-    <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Scrub within step">
-    <div class="dots" id="dots"></div>
-    <label><input type="checkbox" id="all" checked>All</label>
-    <label><input type="checkbox" id="lineart">Line art</label>
-    <label><input type="checkbox" id="showsrc" checked>Page</label>
+  <div class="dock">
+    <div class="page-thumb glass" id="src"><canvas id="srcCanvas"></canvas><div class="muted" id="srcLabel"></div></div>
+    <div class="controls glass">
+      <div class="group">
+        <button class="icon-btn" id="newScan" aria-label="New scan" title="New scan"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></button>
+        <span class="sep"></span>
+        <button class="icon-btn" id="prev" aria-label="Previous step" title="Previous step"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="pill-btn" id="play">Pause</button>
+        <button class="icon-btn" id="next" aria-label="Next step" title="Next step"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        <button class="icon-btn" id="replay" aria-label="Replay step" title="Replay step"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+      </div>
+      <div class="grow">
+        <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Scrub within step">
+        <div class="dots" id="dots" aria-hidden="true"></div>
+      </div>
+      <div class="group">
+        <label class="chip"><input type="checkbox" id="all" checked>Autoplay</label>
+        <label class="chip"><input type="checkbox" id="lineart">Line art</label>
+        <label class="chip"><input type="checkbox" id="showsrc" checked>Page</label>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -119,5 +215,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted)}
 }}
 </script>
 <script type="module" src="./main.js"></script>
+<script type="module" src="./home.js"></script>
 </body>
 </html>

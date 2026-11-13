@@ -1,0 +1,96 @@
+/* Shared look for the scanner (index.html) and the kit player (kits.html). */
+:root {
+  --bg: #f4f1ec; --surface: #ffffff; --surface-2: #faf8f5; --sunken: #efebe4;
+  --text: #22201c; --muted: #6b675f; --faint: #9a958b; --border: #e2ddd4;
+  --accent: #d9822b; --accent-strong: #b8691b; --accent-soft: #fbeedd;
+  --ok: #3b6d11; --ok-soft: #eef3e6; --bad: #a32d2d; --bad-soft: #fcebeb;
+  --glass: rgba(255, 255, 255, .86);
+  --radius: 14px; --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(34, 32, 28, .06), 0 8px 24px rgba(34, 32, 28, .08);
+  --top: env(safe-area-inset-top); --bottom: env(safe-area-inset-bottom);
+}
+* { box-sizing: border-box }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent }
+button, input, select { font: inherit; color: inherit }
+a { color: var(--accent-strong) }
+[hidden] { display: none !important }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+  padding: 0 18px; border: 0; border-radius: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
+  background: var(--accent); color: #fff; transition: background .15s, transform .05s }
+.btn:hover:not(:disabled) { background: var(--accent-strong) }
+.btn:active:not(:disabled) { transform: scale(.98) }
+.btn:disabled { opacity: .45; cursor: default }
+.btn.secondary { background: var(--sunken); color: var(--text) }
+.btn.secondary:hover:not(:disabled) { background: #e6e0d6 }
+.btn.block { display: flex; width: 100% }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: pointer;
+  color: var(--text); text-decoration: none; flex: none }
+.icon-btn:hover:not(:disabled) { background: var(--sunken) }
+.icon-btn:disabled { opacity: .35; cursor: default }
+.icon-btn svg, .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round }
+.pill-btn { min-width: 84px; height: 40px; padding: 0 16px; border: 0; border-radius: 10px; font-weight: 600;
+  background: var(--accent); color: #fff; cursor: pointer }
+.pill-btn:disabled { opacity: .45 }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px }
+
+/* Toggle chips (checkbox inside a label) */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2); font-size: 13px; color: var(--muted);
+  cursor: pointer; user-select: none; white-space: nowrap }
+.chip input { position: absolute; opacity: 0; pointer-events: none }
+.chip:has(input:checked) { background: var(--accent-soft); border-color: #efcfa6; color: var(--accent-strong) }
+.chip:has(input:disabled) { opacity: .5; cursor: default }
+.chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
+
+/* Status pill */
+.status-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px 4px 9px }
+.status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint) }
+.status-pill.ok::before { background: #4c9a2a }
+.status-pill.bad { color: var(--bad) }
+.status-pill.bad::before { background: var(--bad) }
+
+/* Floating panels over the 3D view */
+.glass { background: var(--glass); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(226, 221, 212, .9); border-radius: var(--radius); box-shadow: var(--shadow) }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--accent-strong) }
+.step-title { font-size: 17px; font-weight: 650; line-height: 1.3; margin: 3px 0 2px }
+.muted { color: var(--muted); font-size: 13px }
+details > summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; display: flex;
+  align-items: center; gap: 6px; padding: 4px 0 }
+details > summary::-webkit-details-marker { display: none }
+details > summary::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg); transition: transform .15s; margin: 0 3px 0 1px }
+details[open] > summary::before { transform: rotate(45deg) }
+
+/* Player chrome: a top card and a bottom dock (manual page above the control bar, never overlapping) */
+.player-card { position: absolute; top: calc(var(--top) + 12px); left: 12px; width: min(380px, calc(100vw - 24px));
+  max-height: calc(100vh - 220px); overflow: auto; padding: 12px 14px }
+.dock { position: absolute; left: 12px; right: 12px; bottom: calc(var(--bottom) + 12px); display: flex;
+  flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none }
+.dock > * { pointer-events: auto }
+.page-thumb { width: min(300px, 34vw); padding: 6px; overflow: hidden }
+.page-thumb canvas, .page-thumb img { display: block; width: 100%; border-radius: 8px }
+.page-thumb .muted { padding: 4px 4px 0; font-size: 12px }
+.controls { align-self: stretch; display: flex; align-items: center; gap: 8px; padding: 8px; flex-wrap: wrap }
+.controls .group { display: flex; align-items: center; gap: 6px }
+.controls .grow { flex: 1; min-width: 140px; display: flex; align-items: center; gap: 10px }
+.controls .sep { width: 1px; height: 24px; background: var(--border) }
+input[type=range] { accent-color: var(--accent); width: 100% }
+input[type=checkbox] { accent-color: var(--accent) }
+
+@media (max-width: 640px) {
+  .player-card { max-height: 34vh; padding: 10px 12px }
+  .step-title { font-size: 16px }
+  .page-thumb { width: 38vw }
+  .controls { gap: 6px }
+  .controls .sep { display: none }
+  .controls .grow { order: 5; flex-basis: 100% }
+}
