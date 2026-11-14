@@ -24,7 +24,7 @@ LIMIT = 15 * 1024 * 1024
 # Gemini's step mapping is saved per PDF and kit, so a manual costs one model call however often it is
 # uploaded. Bump SCAN_VERSION when the prompt changes so older answers are not reused.
 SCANS = Path(__file__).resolve().parent / "jobs" / "cache" / "kits"
-SCAN_VERSION = "3"
+SCAN_VERSION = "4"
 
 
 class Identification(BaseModel):
@@ -72,6 +72,28 @@ class Action(BaseModel):
     nodes: list[int]
     motion: Literal["slide", "insert", "tighten", "place"]
     hardware: list[Hardware]
+    # Animation the manual prints for this step, if any ("translate-down-rotate | 2.0 seconds")
+    direction: Literal["down", "up", "left", "right", "forward", "back", "none"] | None = None
+    rotate: bool | None = None
+    duration_s: float | None = None
+
+    @field_validator("direction", mode="before")
+    @classmethod
+    def _direction(cls, value):
+        if value is None or str(value).strip().lower() in ("", "null"):
+            return None
+        return _closest(value, {"down", "up", "left", "right", "forward", "back", "none"},
+                        [("down", "down"), ("lower", "down"), ("up", "up"), ("raise", "up"), ("left", "left"),
+                         ("right", "right"), ("forward", "forward"), ("front", "forward"), ("back", "back"),
+                         ("fade", "none"), ("appear", "none")], None)
+
+    @field_validator("duration_s", mode="before")
+    @classmethod
+    def _duration(cls, value):
+        try:
+            return min(10.0, max(0.5, float(value))) if value not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
 
     @field_validator("motion", mode="before")
     @classmethod
@@ -118,17 +140,33 @@ def geometry(kit):
     return kit_geometry(ROOT / kit["model"])
 
 
+def _pdf_text(data):
+    import pypdfium2 as pdfium
+    try:
+        return "\n".join(page.get_textpage().get_text_range() for page in pdfium.PdfDocument(data))
+    except Exception:
+        return ""
+
+
 def read_manual_id(data):
     """IKEA prints the document ID (AA-...) as real text on most pages, so a text read finds it
     without a model call. Returns None for scanned PDFs with no text layer."""
-    import pypdfium2 as pdfium
-    found = Counter()
-    try:
-        for page in pdfium.PdfDocument(data):
-            found.update(re.findall(r"AA-\d{5,8}-\d{1,3}", page.get_textpage().get_text_range()))
-    except Exception:
-        return None
+    found = Counter(re.findall(r"AA-\d{5,8}-\d{1,3}", _pdf_text(data)))
     return found.most_common(1)[0][0] if found else None
+
+
+def match_by_text(data, kits):
+    """The kit whose manual ID is printed in the PDF: IKEA's AA-... number, or any other ID a
+    catalog entry gives (such as LTS107BK). None unless exactly one kit matches."""
+    text = _pdf_text(data)
+    words = normalize(text)
+    printed = Counter(re.findall(r"AA-\d{5,8}-\d{1,3}", text))
+    if printed:
+        ident = normalize(printed.most_common(1)[0][0])
+        found = [k for k in kits if normalize(k["manual_id"]) == ident]
+    else:
+        found = [k for k in kits if len(normalize(k["manual_id"])) >= 6 and normalize(k["manual_id"]) in words]
+    return found[0] if len(found) == 1 else None
 
 
 def with_motions(kit, actions, hardware=None):
@@ -221,7 +259,8 @@ def kit_asset(article: str, asset: str):
     if asset not in ("model", "manual"):
         raise HTTPException(404)
     mime = "model/gltf-binary" if asset == "model" else "application/pdf"
-    return FileResponse(ROOT / kit[asset], media_type=mime)
+    # models and manuals get replaced during development: make browsers check for a newer copy
+    return FileResponse(ROOT / kit[asset], media_type=mime, headers={"Cache-Control": "no-cache"})
 
 
 @router.post("/scan")
@@ -240,9 +279,7 @@ def scan_kit(file: UploadFile = File(...), fresh: bool = False):
         pages = prepare_pages([("manual.pdf", data)])
         provider = make_provider(fail_fast=True)
         if not kit:
-            printed = normalize(read_manual_id(data))
-            matches = [item for item in kits if printed and normalize(item["manual_id"]) == printed]
-            kit = matches[0] if len(matches) == 1 else None
+            kit = match_by_text(data, kits)
         if not kit:
             identity = provider.generate(
                 pages[:2] + pages[-1:],
@@ -258,6 +295,9 @@ def scan_kit(file: UploadFile = File(...), fresh: bool = False):
                     # IKEA-Manual kits have no real article number, so only the document ID can match them
                     and (not article or item["article_number"] == article or not item["article_number"].isdigit()))
                 or (not manual_id and article and item["article_number"] == article)
+                # kits outside IKEA's numbering keep their maker's model number as the manual ID
+                or (article and normalize(item["manual_id"]) == article)
+                or (manual_id and not manual_id.startswith("AA") and normalize(item["manual_id"]) == manual_id)
             ]
             if len(matches) != 1:
                 raise HTTPException(422, "This PDF could not be matched to exactly one kit. Try the matching catalog PDF.")
@@ -282,6 +322,11 @@ def scan_kit(file: UploadFile = File(...), fresh: bool = False):
             "null, the printed length in mm or null, how many, and the two node IDs it joins. Give one entry per pair "
             "of parts joined, with count = how many go into that one joint. Use an empty list when an action uses "
             "no hardware, and leave out tools such as Allen keys. "
+            "If the manual prints animation instructions for a step (for example 'Action: translate-down-rotate | "
+            "Duration: 2.0 seconds'), copy them: direction = the way the parts travel (translate-down = down, "
+            "translate-up = up, fade-in = none), rotate = true when the action includes rotate, duration_s = the "
+            "seconds. Leave them null when the manual prints none. When a printed list of node names ends with "
+            "'...', include every part of that family the step describes (for example all eight rods). "
             "Use only these exact node IDs: " + json.dumps(parts, ensure_ascii=False)
         )
         saved = SCANS / f"{hashlib.sha256(data).hexdigest()}-{kit['article_number']}-v{SCAN_VERSION}.json"

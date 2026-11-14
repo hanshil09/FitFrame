@@ -32,6 +32,56 @@ const HARDWARE_LOOK = {
   cam_nut: {color:0xb9c0c6,metalness:.8,roughness:.3}
 };
 
+// Makes a model readable. Some exporters (trimesh) store near-black vertex colours, or none on some
+// parts, so boards, holes and steps disappear into each other. Untextured dark parts get a neutral
+// grey, small hardware a light metal finish, and every part thin outlines so edges, holes and a
+// raised panel stand out. Textured models (the IKEA kits) keep their own look.
+const EDGE = new THREE.LineBasicMaterial({color:0x1f2226,transparent:true,opacity:.55});
+function finishLook(root) {
+  const size = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).length();
+  root.traverse(node => {
+    if (!node.isMesh) return;
+    const geometry = node.geometry;
+    for (const material of [node.material].flat()) {
+      if (material.map) continue;
+      const colours = geometry.attributes.color;
+      let light = 1;
+      if (material.vertexColors && colours) {
+        light = 0;
+        const step = Math.max(1,Math.floor(colours.count/400));
+        let n = 0;
+        for (let i = 0; i < colours.count; i += step, n++) light += (colours.getX(i)+colours.getY(i)+colours.getZ(i))/3;
+        light /= n;
+      }
+      geometry.computeBoundingBox();
+      const small = geometry.boundingBox.getSize(new THREE.Vector3()).length() < 0.05*size;
+      if (small) {
+        material.vertexColors = false;
+        material.color.set(0xc9ced4);
+        material.metalness = .6; material.roughness = .35;
+      } else if (light < .25 || (material.vertexColors && !colours) || !material.vertexColors && material.color.getHSL({}).l > .9) {
+        material.vertexColors = false;
+        material.color.set(0x7d838b);
+        material.metalness = .1; material.roughness = .7;
+      }
+      material.needsUpdate = true;
+    }
+    const triangles = (geometry.index ? geometry.index.count : geometry.attributes.position.count)/3;
+    if (triangles < 20000) node.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry,25),EDGE));
+  });
+}
+
+// Turns a part about its own long axis through its own centre. Some exporters (trimesh) store every
+// part around the model's origin, and turning those about their origin would swing them in a circle.
+function spin(part, angle) {
+  const {object,localAxis,localCenter} = part;
+  const turn = new THREE.Quaternion().setFromAxisAngle(localAxis,angle);
+  const shift = localCenter.clone().sub(localCenter.clone().applyQuaternion(turn))
+    .multiply(object.scale).applyQuaternion(object.quaternion);
+  object.quaternion.multiply(turn);
+  object.position.add(shift);
+}
+
 function status(message) { $('status').textContent = message; }
 
 // Hardware drawn from a profile when no real IKEA model fits: the same shapes as templates.js,
@@ -84,7 +134,9 @@ async function addHardware(specs) {
       ? await libraryGeometry(spec.number).catch(() => profileGeometry(spec.kind))
       : profileGeometry(spec.kind);
     const look = HARDWARE_LOOK[spec.kind] ?? HARDWARE_LOOK.screw;
-    const mesh = new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({...look,emissive:0x2a6f97,emissiveIntensity:.12}));
+    const material = new THREE.MeshStandardMaterial({...look,emissive:0x2a6f97,emissiveIntensity:.12});
+    material.userData.baseEmissive = material.emissive.clone();
+    const mesh = new THREE.Mesh(geometry,material);
     // keep the real part's proportions, but never fatter than the parts it joins allow
     const along = spec.length/length;
     const across = Math.min(along,(spec.width ?? Infinity)/width);
@@ -97,8 +149,9 @@ async function addHardware(specs) {
     holder.updateMatrixWorld(true);
     parts.set(id,{
       object:holder, position:holder.position.clone(), rotation:holder.quaternion.clone(),
-      localAxis:new THREE.Vector3(0,0,1), slender:true, length:spec.length, centered:false,
-      worldPosition:holder.getWorldPosition(new THREE.Vector3()), worldRotation:holder.getWorldQuaternion(new THREE.Quaternion())
+      localAxis:new THREE.Vector3(0,0,1), localCenter:new THREE.Vector3(), slender:true, length:spec.length, centered:false,
+      worldPosition:holder.getWorldPosition(new THREE.Vector3()), worldRotation:holder.getWorldQuaternion(new THREE.Quaternion()),
+      materials:[material]
     });
     extras.push(id);
   }
@@ -179,7 +232,8 @@ function showStep(index) {
 
 async function load(item) {
   if (kit?.article_number === item.article_number) return;
-  const asset = await loader.loadAsync('/api/kits/' + item.article_number + '/model');
+  // a new query each load, so a model replaced on the server is never served from the browser's cache
+  const asset = await loader.loadAsync('/api/kits/' + item.article_number + '/model?t=' + Date.now());
   const mapped = new Map();
   asset.scene.updateMatrixWorld(true);
   asset.scene.traverse(object => {
@@ -201,14 +255,15 @@ async function load(item) {
         bounds.min.getComponent(longest) + bounds.max.getComponent(longest) <= 0 ? 1 : -1);
       mapped.set(id,{
         object, position:object.position.clone(), rotation:object.quaternion.clone(),
-        localAxis:axis, slender:axes[0] > 2*axes[1], length:axes[0],
+        localAxis:axis, localCenter:bounds.getCenter(new THREE.Vector3()), slender:axes[0] > 2*axes[1], length:axes[0],
         centered:Math.abs(bounds.min.getComponent(longest)+bounds.max.getComponent(longest)) < axes[0]*.1,
         worldPosition:object.getWorldPosition(new THREE.Vector3()),
         worldRotation:object.getWorldQuaternion(new THREE.Quaternion())
       });
     }
   });
-  if (mapped.size !== item.mesh_nodes) throw new Error('Model nodes differ from the catalog.');
+  // A catalog loaded before a model was replaced can hold an old part count; the model itself is the truth.
+  if (mapped.size !== item.mesh_nodes) console.warn('Model has ' + mapped.size + ' parts; the catalog listed ' + item.mesh_nodes + '.');
   if (model) {
     model.removeFromParent();
     const resources = new Set();
@@ -231,6 +286,7 @@ async function load(item) {
     });
     if (node.material.length === 1) node.material = node.material[0];
   });
+  finishLook(model);      // after each mesh has its own material copy, so one part's finish stays its own
   for (const part of mapped.values()) {
     part.materials = [];
     part.object.traverse(node => { if (node.isMesh) part.materials.push(...[node.material].flat().filter(m => m.emissive)); });
@@ -290,11 +346,13 @@ function setWorldPose(object, pose) {
 function tick(now) {
   requestAnimationFrame(tick);
   if (!model) return;
-  if (playing && now-started >= interval) {
+  // a step plays for as long as its manual says (duration_s), otherwise the default
+  const span = actions[step]?.duration_s ? actions[step].duration_s*1000 : interval;
+  if (playing && now-started >= span) {
     if (step < actions.length-1) showStep(step+1);
     else { playing = false; updateControls(); }
   }
-  const progress = Math.min(1,Math.max(0,(now-started)/(interval*.75)));
+  const progress = Math.min(1,Math.max(0,(now-started)/(span*.75)));
   const action = actions[step];
   const previous = new Set(actions.slice(0,step).flatMap(item => item.nodes));
   const active = new Set(action?.nodes);
@@ -336,7 +394,7 @@ function tick(now) {
       const world = object.getWorldPosition(new THREE.Vector3()).add(offset);
       object.position.copy(object.parent.worldToLocal(world));
       if (active.has(id) && move?.turns) {
-        object.rotateOnAxis(localAxis,(progress-1)*Math.PI*2*move.turns);
+        spin(part,(progress-1)*Math.PI*2*move.turns);
       }
     } else if (active.has(id) && action.entry_target !== undefined) {
       const target = parts.get(action.entry_target).worldPosition;
@@ -344,7 +402,7 @@ function tick(now) {
       if (action.motion === 'tighten') {
         const shaft = localAxis.clone().applyQuaternion(object.getWorldQuaternion(new THREE.Quaternion()));
         direction.copy(shaft.multiplyScalar(direction.dot(shaft) < 0 ? -1 : 1));
-        object.rotateOnAxis(localAxis,(progress-1)*Math.PI*3);
+        spin(part,(progress-1)*Math.PI*3);
       }
       const distance = THREE.MathUtils.lerp(action.distance,action.seat_offset ?? 0,progress);
       const position = object.getWorldPosition(new THREE.Vector3()).addScaledVector(direction.normalize(),distance);
@@ -367,11 +425,11 @@ function tick(now) {
       object.position.copy(object.parent.worldToLocal(world));
     }
     if (active.has(id) && action.motion === 'tighten' && isFastener && action.entry_target === undefined && !keyed) {
-      object.rotateOnAxis(localAxis,(progress-1)*Math.PI*2);
+      spin(part,(progress-1)*Math.PI*2);
     }
   }
   // Glow on the parts being fitted, fading out once they are seated
-  const settle = Math.min(1,Math.max(0,(now-started-interval*.75)/350));
+  const settle = Math.min(1,Math.max(0,(now-started-span*.75)/350));
   for (const [id,part] of parts) {
     const k = action && active.has(id) ? 0.32*(1-settle) : 0;
     for (const material of part.materials) material.emissive.copy(material.userData.baseEmissive).lerp(GLOW,k);

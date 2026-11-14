@@ -264,7 +264,7 @@
     "manual_id": "LTS107BK",
     "model": "TV_desk/model.glb",
     "manual": "TV_desk/manual.pdf",
-    "mesh_nodes": 29,
+    "mesh_nodes": 38,
     "units": "m",
     "model_license": "Estimated model supplied by the FitFrame team"
   }

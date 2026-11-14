@@ -182,8 +182,28 @@ def _load(path, _mtime):
             if all(_depths(parts[a], parts[b])[i] > -tolerance for i in range(3)):
                 contacts[a].add(b)
                 contacts[b].add(a)
+    _screw_heads(parts, contacts, diagonal)
     return {"parts": parts, "contacts": contacts, "lo": low, "hi": high, "diagonal": diagonal,
             "center": tuple((a + b) / 2 for a, b in zip(low, high))}
+
+
+def _screw_heads(parts, contacts, diagonal):
+    """Some models split a screw into a shaft and a separate head. A small part wider than a shaft,
+    sitting on one end of it, is that shaft's head: the screw then goes in head-last and turns, and
+    the head travels with the shaft (see plan_motions)."""
+    for node, part in parts.items():
+        if part["fastener"] or max(part["sizes"]) > 0.06 * diagonal:
+            continue
+        for other in contacts[node]:
+            shaft = parts[other]
+            if not shaft["fastener"] or shaft.get("cap") is not None:
+                continue
+            along = dot(sub(part["center"], shaft["center"]), shaft["axis"])
+            if abs(along) > 0.3 * shaft["length"] and part["sizes"][0] > 1.3 * shaft["sizes"][1]:
+                part["head_of"] = other
+                shaft["cap"] = node
+                shaft["head"] = 1 if along > 0 else -1
+                break
 
 
 def kit_geometry(model_path):
@@ -387,9 +407,13 @@ def split_touching(geometry, actions):
     for action in actions:
         new = [n for n in action["nodes"] if n in geometry["parts"] and n not in installed]
         wave = {}
+        parts = geometry["parts"]
         for node in new:
-            touching = [wave[m] for m in wave if m in geometry["contacts"][node]]
-            wave[node] = 1 + max(touching) if touching else 0
+            # a screw's shaft and its separately modelled head are one screw: they go in together
+            pair = {parts[node].get("head_of"), parts[node].get("cap")} - {None}
+            touching = [wave[m] for m in wave if m in geometry["contacts"][node] and m not in pair]
+            together = [wave[m] for m in pair if m in wave]
+            wave[node] = together[0] if together else (1 + max(touching) if touching else 0)
         waves = max(wave.values(), default=0) + 1
         if waves == 1:
             result.append(action)
@@ -461,6 +485,34 @@ def contacts_of(geometry, node):
     return geometry["contacts"].get(node, set())
 
 
+PRINTED = {"down": (0, 1, 0), "up": (0, -1, 0), "left": (1, 0, 0), "right": (-1, 0, 0),
+           "forward": (0, 0, -1), "back": (0, 0, 1)}     # where a part starts, for each way it travels
+
+
+def _as_printed(geometry, node, installed, drawn, computed, action):
+    """The manual prints how a step animates ("translate-down-rotate"): follow it exactly. The
+    collision check still runs, and only flags a printed move that passes through built parts."""
+    import collision
+    part = geometry["parts"][node]
+    if action["direction"] == "none":
+        return dict(computed, start=[0, 0, 0], path=None, turns=0, printed=True)
+    start = PRINTED[action["direction"]]
+    extent = sum(abs(start[i]) * (part["hi"][i] - part["lo"][i]) for i in range(3))
+    travel = (1.2 * part["length"] + 0.02 * geometry["diagonal"]) if part["fastener"] else \
+        0.18 * geometry["diagonal"] + 0.15 * extent
+    axis, sign = collision.axis_of(start)
+    placed = geometry["contacts"][node] & installed
+    allowed = {n: collision.depth_into(geometry, node, n, axis, sign) + 1 for n in placed}
+    for key, spec, _ in drawn:
+        hosts = [allowed[j] for j in spec["joins"] if j in allowed]
+        if node in spec["joins"] or hosts:
+            allowed[key] = max(hosts + [1]) if node not in spec["joins"] else 99
+    hit = collision.first_hit(geometry, node, start, travel, installed, allowed, extra=[(k, c) for k, _, c in drawn])
+    turns = 2 if action.get("rotate") and part["fastener"] else 0
+    return dict(computed, start=[round(c * travel, 6) for c in start], end=[0, 0, 0], path=None,
+                turns=turns, blocked=bool(hit), printed=True)
+
+
 def plan_motions(geometry, actions, hardware=None):
     """Per-part motions for each action, in order. A part named again later (tightened) spins in place.
     `hardware` is the drawn hardware by id (hardware.py): once in place it blocks later parts too."""
@@ -499,6 +551,13 @@ def plan_motions(geometry, actions, hardware=None):
             drawn = [(key, hardware[key], cells[key]) for key in shown if (key in away) == (node in away)
                      and (node not in away or group_of.get(key) == group_of[node])]
             motions[node] = part_motion(geometry, node, world, drawn)
+            if action.get("direction"):
+                motions[node] = _as_printed(geometry, node, world, drawn, motions[node], action)
+        # a screw head modelled as its own part rides along with its shaft
+        for node in list(motions):
+            shaft = geometry["parts"].get(node, {}).get("head_of") if not isinstance(node, str) else None
+            if shaft in motions and node not in installed and shaft not in installed:
+                motions[node] = dict(motions[shaft], turns=0, joins=[shaft])
         installed |= {n for n in action["nodes"] if n in geometry["parts"]}
         shown += [n for n in action["nodes"] if n in hardware]
         result.append(motions)

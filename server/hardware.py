@@ -277,6 +277,8 @@ def add_hardware(geometry, actions, metres):
             if len(set(between)) != 2:
                 continue
             a, b = between
+            if any(parts[n]["fastener"] or parts[n].get("head_of") is not None for n in (a, b)):
+                continue                      # one side is itself a screw or dowel in the model
             real = [n for n in geometry["contacts"][a] & geometry["contacts"][b] if parts[n]["fastener"]]
             if real:
                 continue                      # the model already has this hardware
