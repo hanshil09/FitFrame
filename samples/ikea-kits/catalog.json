@@ -257,5 +257,15 @@
     "source_url": "https://cs.stanford.edu/~rcwang/projects/ikea_manual",
     "model_license": "IKEA-Manual research dataset (no licence stated)",
     "reference_steps": "im-table-nesna/steps.json"
+  },
+  {
+    "article_number": "TV_desk",
+    "name": "TV desk (YAUKTAK LTS107BK)",
+    "manual_id": "LTS107BK",
+    "model": "TV_desk/model.glb",
+    "manual": "TV_desk/manual.pdf",
+    "mesh_nodes": 29,
+    "units": "m",
+    "model_license": "Estimated model supplied by the FitFrame team"
   }
 ]

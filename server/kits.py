@@ -309,7 +309,7 @@ def scan_kit(file: UploadFile = File(...), fresh: bool = False):
         actions = split_touching(shape, actions)
         actions, moved = parts_bin.unsandwich(shape, actions)
         unresolved += moved
-        actions, extra, notes = parts_bin.add_hardware(shape, actions, metres=kit["article_number"].isdigit())
+        actions, extra, notes = parts_bin.add_hardware(shape, actions, metres=kit.get("units") == "m" or kit["article_number"].isdigit())
         actions = with_motions(kit, actions, extra)
         unresolved += notes
         for action in actions:

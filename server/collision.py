@@ -105,6 +105,18 @@ def axis_of(direction):
     return axis, 1 if direction[axis] > 0 else -1
 
 
+def _pierces(rod, board, axis):
+    """A rod, post or leg running along `axis` straight through a board: it goes through a hole there,
+    even when the model leaves the hole out."""
+    if not rod["slender"] or abs(rod["axis"][axis]) < 0.95:
+        return False
+    slack = 0.1 * rod["sizes"][1]
+    inside = all(board["lo"][i] - slack <= rod["lo"][i] and rod["hi"][i] <= board["hi"][i] + slack
+                 for i in range(3) if i != axis)
+    beyond = rod["lo"][axis] < board["lo"][axis] or rod["hi"][axis] > board["hi"][axis]
+    return inside and beyond
+
+
 def depth_into(geometry, node, other, axis, sign=1):
     """How many cubes `node` may travel along `axis` (direction `sign`) while still touching a part
     it joins: until it has fully left that part along the way out (a screw slides the whole length
@@ -115,7 +127,7 @@ def depth_into(geometry, node, other, axis, sign=1):
     # Two boards meeting face to face: moving straight off the face, only that thin contact is shared.
     # Sliding along the face, or a screw or dowel in its hole, keeps touching until it is clear.
     clear = max(0.0, (b["hi"][axis] - a["lo"][axis]) if sign > 0 else (a["hi"][axis] - b["lo"][axis]))
-    if not (a["fastener"] or b["fastener"]):
+    if not (a["fastener"] or b["fastener"] or _pierces(a, b, axis) or _pierces(b, a, axis)):
         if axis == min(range(3), key=lambda i: overlaps[i]):
             return math.ceil(overlap / size(geometry))
         return math.ceil(clear / size(geometry))          # sliding along the face, however long it is
